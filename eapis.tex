@@ -1,0 +1,58 @@
+\chapter{EAPIs}
+
+\section{Definition}
+
+An EAPI can be thought of as a `version' of this specification to which a package conforms. An EAPI
+value is a string as per section~\ref{sec:eapi-names}, and is part of an ebuild's metadata.
+
+If a package manager encounters a package version with an unrecognised EAPI, it must not attempt to
+perform any operations upon it. It could, for example, ignore the package version entirely (although
+this can lead to user confusion), or it could mark the package version as masked. A package manager
+must not use any metadata generated from a package with an unrecognised EAPI.
+
+The package manager must not attempt to perform any kind of comparison test other than equality upon
+EAPIs.
+
+EAPIs are also used for profile directories, as described in section~\ref{sec:profile-eapi}.
+
+\section{Defined EAPIs}
+
+The following EAPIs are defined by this specification:
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{compactdesc}
+\item[0] The `original' base EAPI.
+\item[1] EAPI `1' contains a number of extensions to EAPI `0'.
+\item[2] EAPI `2' contains a number of extensions to EAPI `1'.
+\item[3] EAPI `3' contains a number of extensions to EAPI `2'.
+\item[4] EAPI `4' contains a number of extensions to EAPI `3'.
+\item[5] EAPI `5' contains a number of extensions to EAPI `4'.
+\item[6] EAPI `6' contains a number of extensions to EAPI `5'.
+\item[7] EAPI `7' contains a number of extensions to EAPI `6'.
+\end{compactdesc}
+
+Except where explicitly noted, everything in this specification
+applies to all of the above EAPIs.%
+\footnote{Another unofficial EAPI `kdebuild-1' was a series of
+    extensions to EAPI `1' formerly used by the Gentoo KDE project.
+    Some of its features have been included in EAPI `2' or later.}
+
+\section{Reserved EAPIs}
+
+\begin{compactitem}
+\item EAPIs whose value consists purely of an integer are reserved for future versions of this
+    specification.
+\item EAPIs whose value starts with the string \t{paludis-} are reserved for experimental
+    use by the Paludis package manager.
+\end{compactitem}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

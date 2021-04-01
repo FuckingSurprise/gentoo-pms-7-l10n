@@ -1,0 +1,269 @@
+\chapter{Tree Layout}
+
+This chapter defines the layout on-disk of an ebuild repository. In all cases below where a file or
+directory is specified, a symlink to a file or directory is also valid. In this case, the package
+manager must follow the operating system's semantics for symbolic links and must not behave
+differently from normal.
+
+\section{Top Level}
+
+An ebuild repository shall occupy one directory on disk, with the following subdirectories:
+\begin{compactitem}
+\item One directory per category, whose name shall be the name of the category. The layout of
+    these directories shall be as described in section~\ref{sec:category-dirs}.
+\item A \t{profiles} directory, described in section~\ref{sec:profiles-dir}.
+\item A \t{licenses} directory (optional), described in section~\ref{sec:licenses-dir}.
+\item An \t{eclass} directory (optional), described in section~\ref{sec:eclass-dir}.
+\item A \t{metadata} directory (optional), described in section~\ref{sec:metadata-dir}.
+\item Other optional support files and directories (skeleton ebuilds or ChangeLogs,
+    for example) may exist but are not covered by this specification. The package manager must
+    ignore any of these files or directories that it does not recognise.
+
+\end{compactitem}
+
+\section{Category Directories}
+\label{sec:category-dirs}
+
+Each category provided by the repository (see also: the
+\t{profiles/categories} file, section~\ref{profiles-categories}) shall
+be contained in one directory, whose name shall be that of the
+category. Each category directory shall contain:
+\begin{compactitem}
+\item A \t{metadata.xml} file, as described in appendix~\ref{sec:metadata-xml}\@. Optional.
+\item Zero or more package directories, one for each package in the
+  category, as described in section~\ref{sec:package-dirs}. The name of
+  the package directory shall be the corresponding package name.
+\end{compactitem}
+
+Category directories may contain additional files, whose purpose is not covered by this
+specification. Additional directories that are not for a package may \e{not} be present, to avoid
+conflicts with package name directories; an exception is made for filesystem components whose name
+starts with a dot, which the package manager must ignore, and for any directory named \t{CVS}.
+
+It is not required that a directory exists for each category provided by the repository. A category
+directory that does not exist shall be considered equivalent to an empty category (and by extension,
+a package manager may treat an empty category as a category that does not exist).
+
+\section{Package Directories}
+\label{sec:package-dirs}
+
+A package directory contains the following:
+\begin{compactitem}
+\item Zero or more ebuilds. These are as described in section~\ref{sec:ebuild-format} and others.
+\item A \t{metadata.xml} file, as described in appendix~\ref{sec:metadata-xml}\@. Optional only for
+    legacy support.
+\item A \t{ChangeLog}, in a format determined by the provider of the repository. Optional.
+\item A \t{Manifest} file, whose format is described in~\cite{Glep44}. Can be omitted if the file
+    would be empty.
+\item A \t{files} directory, containing any support files needed by the ebuilds. Optional.
+\end{compactitem}
+
+Any ebuild in a package directory must be named \t{name-ver.ebuild}, where \t{name} is the
+(unqualified) package name, and \t{ver} is the package's version. Package managers must ignore
+any ebuild file that does not match these rules.
+
+A package directory that contains no correctly named ebuilds shall be considered a package with no
+versions. A package with no versions shall be considered equivalent to a package that does not
+exist (and by extension, a package manager may treat a package that does not exist as a package
+with no versions).
+
+A package directory may contain other files or directories, whose purpose is not covered by
+this specification.
+
+\section{The Profiles Directory}
+\label{sec:profiles-dir}
+
+The profiles directory shall contain zero or more profile directories
+as described in section~\ref{sec:profiles}, as well as the following files
+and directories. In any line-based file, lines beginning with a \#
+character are treated as comments, whilst blank lines are ignored. All
+contents of this directory, with the exception of \t{repo_name}, are
+optional.
+
+The profiles directory may contain an \t{eapi} file. This file, if it exists, must contain a single
+line with the name of an EAPI\@. This specifies the EAPI to use when handling the profiles
+directory; a package manager must not attempt to use any repository whose profiles directory
+requires an EAPI it does not support. If no \t{eapi} file is present, EAPI 0 shall be used.
+
+If the repository is not intended to be stand-alone, the contents of these files are to be taken
+from or merged with the master repository as necessary.
+
+Other files not described by this specification may exist, but may not be relied upon. The package
+manager must ignore any files in this directory that it does not recognise.
+
+\begin{description}
+\item[arch.list] \label{arch.list} Contains a list, one entry per line, of permissible values for
+    the \t{ARCH} variable, and hence permissible keywords for packages in this repository.
+\item[categories] \label{profiles-categories} Contains a list, one entry per line, of categories
+    provided by this repository.
+\item[eapi] See above.
+\item[info_pkgs] Contains a list, one entry per line, of qualified package names. Any package
+    matching one of these is to be listed when a package manager displays a `system information'
+    listing.
+\item[info_vars] Contains a list, one entry per line, of profile, configuration, and environment
+    variables which are considered to be of interest. The value of each of these variables may be
+    shown when the package manager displays a `system information' listing.
+\item[package.mask] \label{profiles-package.mask}
+    Contains a list, one entry per line, of package dependency specifications (using the directory's
+    EAPI). Any package version matching one of these is considered to be masked, and will not be
+    installed regardless of profile unless it is unmasked by the user configuration.
+
+    \featurelabel{package-mask-dir} For EAPIs listed in table~\ref{tab:package-mask-dir} as
+    supporting it, \t{package.mask} can be a directory instead of a regular file. Files contained
+    in that directory, unless their name begins with a dot, will be concatenated in order of their
+    filename in the POSIX locale and the result will be processed as if it were a single file.
+    Any subdirectories will be ignored.
+\item[profiles.desc] Described below in section~\ref{sec:profiles.desc}.
+\item[repo_name] Contains, on a single line, the name of this repository. The repository name must
+    conform to section~\ref{sec:repository-names}.
+\item[thirdpartymirrors] Described below in section~\ref{sec:thirdpartymirrors}.
+\item[use.desc] Contains descriptions of valid global USE flags for this repository. The format is
+    described in section~\ref{sec:use.desc}.
+\item[use.local.desc] Contains descriptions of valid local USE flags for this repository, along with
+    the packages to which they apply. The format is as described in section~\ref{sec:use.desc}.
+\item[desc/] This directory contains files analogous to \t{use.desc} for the various \t{USE_EXPAND}
+    variables. Each file in it is named \t{<varname>.desc}, where \t{<varname>} is the variable
+    name, in lowercase, whose possible values the file describes. The format of each file is as for
+    \t{use.desc}, described in section~\ref{sec:use.desc}. The \t{USE_EXPAND} name is \e{not}
+    included as a prefix here.
+\item[updates/] This directory is described in section~\ref{sec:updates-dir}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting a directory for \t{package.mask}}
+    \label{tab:package-mask-dir}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{package.mask} can be a directory?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & No  \\
+      7                   & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{The profiles.desc file}
+\label{sec:profiles.desc}
+\t{profiles.desc} is a line-based file, with the standard commenting
+rules from section~\ref{sec:profiles-dir}, containing a list of profiles
+that are valid for use, along with their associated architecture and
+status. Each line has the format:
+
+\begin{verbatim}
+<keyword> <profile path> <stability>
+\end{verbatim}
+
+Where:
+
+\begin{compactitem}
+\item \t{<keyword>} is the default keyword for the profile and the \t{ARCH} for which the profile is
+    valid.
+\item \t{<profile path>} is the (relative) path from the \t{profiles} directory to the profile in
+    question.
+\item \t{<stability>} indicates the stability of the profile. This may be useful for QA tools, which
+    may wish to display warnings with a reduced severity for some profiles. The values \t{stable}
+    and \t{dev} are widely used, but repositories may use other values.
+\end{compactitem}
+
+Fields are whitespace-delimited.
+
+\subsection{The thirdpartymirrors file}
+\label{sec:thirdpartymirrors}
+\t{thirdpartymirrors} is another simple line-based file, describing the valid mirrors for use with
+\t{mirror://} URIs in this repository, and the associated download locations. The format of each
+line is:
+\begin{verbatim}
+<mirror name> <mirror 1> <mirror 2> ... <mirror n>
+\end{verbatim}
+Fields are whitespace-delimited. When parsing a URI of the form
+\t{mirror:/\slash name\slash path\slash filename},
+where the \t{path/} part is optional, the \t{thirdpartymirrors} file is searched for a line whose
+first field is \t{name}. Then the download URIs in the subsequent fields have
+\t{path\slash filename} appended to them to generate the URIs from which a download is attempted.
+
+Each mirror name may appear at most once in a file. Behaviour when a mirror name appears multiple
+times is undefined. Behaviour when a mirror is defined in terms of another mirror is undefined. A
+package manager may choose to fetch from all of or a subset of the listed mirrors, and may use an
+order other than the one described.
+
+The mirror with the name equal to the repository's name (and if the repository has a master,
+the master's name) may be consulted for all downloads.
+
+\subsection{use.desc and related files}
+\label{sec:use.desc}
+\t{use.desc} contains descriptions of every valid global USE flag for this repository. It is a
+line-based file with the standard rules for comments and blank lines. The format of each line is:
+\begin{verbatim}
+<flagname> - <description>
+\end{verbatim}
+
+\t{use.local.desc} contains descriptions of every valid local USE flag---those that apply only to a
+small number of packages, or that have different meanings for different packages. Its format is:
+\begin{verbatim}
+<category/package>:<flagname> - <description>
+\end{verbatim}
+Flags must be listed once for each package to which they apply, or if a flag is listed in both
+\t{use.desc} and \t{use.local.desc}, it must be listed once for each package for which its meaning
+differs from that described in \t{use.desc}.
+
+\subsection{The updates directory}
+\label{sec:updates-dir}
+The \t{updates} directory is used to inform the package manager that a package has moved categories,
+names, or that a version has changed SLOT\@. It contains one file per quarter year, named
+\t{[1-4]Q-[YYYY]} for the first to fourth quarter of a given year, for example \t{1Q-2004} or
+\t{3Q-2006}. The format of each file is again line-based, with each line having one of the following
+formats:
+\begin{verbatim}
+move <qpn1> <qpn2>
+slotmove <spec> <slot1> <slot2>
+\end{verbatim}
+The first form, where \t{qpn1} and \t{qpn2} are \i{qualified package names}, instructs the package
+manager that the package \t{qpn1} has changed name, category, or both, and is now called \t{qpn2}.
+
+The second form instructs the package manager that any currently installed package version matching
+package dependency specification \t{spec} whose \t{SLOT} is set to \t{slot1} should have it updated
+to \t{slot2}.
+
+Any name that has appeared as the origin of a move must not be reused in the future. Any slot
+that has appeared as the origin of a slot move may not be used by packages matching the spec of
+that slot move in the future.
+
+\section{The Licenses Directory}
+\label{sec:licenses-dir}
+
+The \t{licenses} directory shall contain copies of the licenses used by packages in the
+repository. Each file will be named according to the name used in the \t{LICENSE} variable as
+described in section~\ref{ebuild-var-LICENSE}, and will contain the complete text of the license in
+human-readable form. Plain text format is strongly preferred but not required.
+
+\section{The Eclass Directory}
+\label{sec:eclass-dir}
+
+The \t{eclass} directory shall contain copies of the eclasses provided by this repository. The
+format of these files is described in section~\ref{sec:eclasses}. It may also contain, in their own
+directory, support files needed by these eclasses.
+
+\section{The Metadata Directory}
+\label{sec:metadata-dir}
+
+The \t{metadata} directory contains various repository-level metadata that is not contained in
+\t{profiles/}. All contents are optional. In this standard only the \t{cache} subdirectory is
+described; other contents are optional but may include security advisories, DTD files for the
+various XML files used in the repository, and repository timestamps.
+
+\subsection{The metadata cache}
+
+The \t{metadata/cache} directory may contain a cached form of all important ebuild metadata
+variables. The contents of this directory are described in chapter~\ref{sec:metadata-cache}.
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

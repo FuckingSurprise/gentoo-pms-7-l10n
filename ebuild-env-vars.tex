@@ -1,0 +1,506 @@
+\section{Defined Variables}
+\label{sec:ebuild-env-vars}
+
+The package manager must define the following environment variables. Not all variables are
+meaningful in all phases; variables that are not meaningful in a given phase may be unset or set to
+any value. Ebuilds must not attempt to modify any of these variables, unless otherwise specified.
+
+Because of their special meanings, these variables may not be preserved consistently across all
+phases as would normally happen due to environment saving (see~\ref{sec:ebuild-env-state}). For example,
+\t{EBUILD_PHASE} is different for every phase, and \t{ROOT} may have changed between the various
+different \t{pkg_*} phases. Ebuilds must recalculate any variable they derive from an inconsistent
+variable.
+
+\begin{landscape}
+\reversemarginpar
+\addtolength{\marginparsep}{-25mm}
+% Workaround for broken marginnote positioning in lscape environment
+\addtolength{\marginparsep}{-\textwidth} % FIXME
+\setlength{\LTleft}{25mm plus 1fil}
+\setlength{\LTright}{0pt plus 1fil}
+\begin{longtable}{!{\extracolsep{\fill}} l P{7.5em} l p{0.5\linewidth}}
+\caption{Defined variables\label{tab:defined-vars}}\\
+\toprule
+\multicolumn{1}{c}{\b{Variable}} &
+\multicolumn{1}{c}{\b{Legal in}} &
+\multicolumn{1}{c}{\b{Consistent?}} &
+\multicolumn{1}{c}{\b{Description}} \\
+\midrule
+\endfirsthead
+\midrule
+\multicolumn{1}{c}{\b{Variable}} &
+\multicolumn{1}{c}{\b{Legal in}} &
+\multicolumn{1}{c}{\b{Consistent?}} &
+\multicolumn{1}{c}{\b{Description}} \\
+\midrule
+\endhead
+\midrule
+\endfoot
+\bottomrule
+\endlastfoot
+\t{P} &
+    All &
+    No\footnote{May change if a package has been updated (see~\ref{sec:updates-dir}).} &
+    Package name and version, without the revision part. For example, \t{vim-7.0.174}. \\
+\t{PF} &
+    All &
+    Ditto &
+    Package name, version, and revision (if any), for example \t{vim-7.0.174-r1}. \\
+\t{PN} &
+    All &
+    Ditto &
+    Package name, for example \t{vim}. \\
+\t{CATEGORY} &
+    All &
+    Ditto &
+    The package's category, for example \t{app-editors}. \\
+\t{PV} &
+    All &
+    Yes &
+    Package version, with no revision. For example \t{7.0.174}. \\
+\t{PR} &
+    All &
+    Yes &
+    Package revision, or \t{r0} if none exists. \\
+\t{PVR} &
+    All &
+    Yes &
+    Package version and revision (if any), for example \t{7.0.174} or \t{7.0.174-r1}. \\
+\t{A} &
+    \t{src_*}, \t{pkg_nofetch} &
+    Yes &
+    All source files available for the package, whitespace separated with no leading or trailing
+    whitespace, and in the order in which the item first appears in a matched component of
+    \t{SRC_URI}\@. Does not include any that are disabled because of USE conditionals. The value is
+    calculated from the base names of each element of the \t{SRC_URI} ebuild metadata variable. \\
+\t{AA}\footnote{This variable is generally considered deprecated. However, ebuilds must still
+    assume that the package manager sets it in the EAPIs supporting it. For example, a few
+    configure scripts use this variable to find the \t{aalib} package; ebuilds calling such
+    configure scripts must thus work around this.} &
+    Ditto &
+    Yes &
+    \featurelabel{aa} All source files that could be available for the package, including any that
+    are disabled in \t{A} because of USE conditionals. The value is calculated from the base names
+    of each element of the \t{SRC_URI} ebuild metadata variable. Only for EAPIs listed in
+    table~\ref{tab:removed-env-vars-table} as supporting \t{AA}. \\
+\t{FILESDIR} &
+    \t{src_*}, global~scope\footnote{Not necessarily present when installing from a binary package.
+    Ebuilds must not access the directory in global scope.} &
+    Yes &
+    The full path to a directory where the files from the package's files directory (used for
+    small support files or patches) are available. See section~\ref{sec:package-dirs}. May or may
+    not exist; if a repository provides no support files for the package in question then an ebuild
+    must be prepared for the situation where \t{FILESDIR} points to a non-existent directory. \\
+\t{DISTDIR} &
+    Ditto &
+    Yes &
+    The full path to the directory in which the files in the \t{A} variable are stored. \\
+\t{WORKDIR} &
+    Ditto &
+    Yes &
+    The full path to the ebuild's working directory, where all build data should be contained.%
+    \label{env-var-WORKDIR} \\
+\t{S} &
+    \t{src_*} &
+    Yes &
+    The full path to the temporary build directory, used by \t{src_compile}, \t{src_install} etc.
+    Defaults to \t{\$\{WORKDIR\}/\$\{P\}}. May be modified by ebuilds. If \t{S} is assigned in the
+    global scope of an ebuild, then the restrictions of section~\ref{sec:ebuild-env-state} for
+    global variables apply. \\
+\t{PORTDIR} &
+    \t{src_*} &
+    No &
+    \featurelabel{portdir} The full path to the master repository's base directory. Only for EAPIs
+    listed in table~\ref{tab:removed-env-vars-table} as supporting \t{PORTDIR}. \\
+\t{ECLASSDIR} &
+    \t{src_*} &
+    No &
+    \featurelabel{eclassdir} The full path to the master repository's eclass directory. Only for
+    EAPIs listed in table~\ref{tab:removed-env-vars-table} as supporting \t{ECLASSDIR}. \\
+\t{ROOT} &
+   \t{pkg_*} &
+   No &
+   The absolute path to the root directory into which the package is to be merged.  Phases which run
+   with full filesystem access must not touch any files outside of the directory given in
+   \t{ROOT}\@. Also of note is that in a cross-compiling environment, binaries inside of \t{ROOT}
+   will not be executable on the build machine, so ebuilds must not call them. The presence of
+   a trailing slash is EAPI dependent as listed in table~\ref{tab:trailing-slash}. \\
+\t{EROOT} &
+    \t{pkg_*} &
+    No &
+    Contains the concatenation of the paths in the \t{ROOT} and \t{EPREFIX} variables,
+    for convenience. See also the \t{EPREFIX} variable. Only for EAPIs listed in
+    table~\ref{tab:offset-env-vars-table} as supporting \t{EROOT}\@. The presence of a trailing
+    slash is EAPI dependent as listed in table~\ref{tab:trailing-slash}. \\
+\t{SYSROOT} &
+    \t{src_*} &
+    No &
+    \featurelabel{sysroot} The absolute path to the root directory containing build dependencies
+    satisfied by \t{DEPEND}\@. Only for EAPIs listed in table~\ref{tab:added-env-vars-table}
+    as supporting \t{SYSROOT}. \\
+\t{ESYSROOT} &
+    \t{src_*} &
+    No &
+    Contains the concatenation of the paths in the \t{SYSROOT} and \t{EPREFIX} variables,
+    for convenience. See also the \t{EPREFIX} variable. Only for EAPIs listed
+    in table~\ref{tab:offset-env-vars-table} as supporting \t{ESYSROOT}. \\
+\t{BROOT} &
+    \t{src_*} &
+    No &
+    \featurelabel{broot} The absolute path to the root directory containing build dependencies
+    satisfied by \t{BDEPEND}, typically executable build tools. This includes any applicable offset
+    prefix. Only for EAPIs listed in table~\ref{tab:offset-env-vars-table} as supporting \t{BROOT}.
+    \\
+\t{T} &
+    All &
+    Partially\footnote{Consistent and preserved across a single connected sequence of install or
+    uninstall phases, but not between install and uninstall. When reinstalling a package, this
+    variable must have different values for the install and the replacement.} &
+    The full path to a temporary directory for use by the ebuild. \\
+\t{TMPDIR} &
+    All &
+    Ditto &
+    Must be set to the location of a usable temporary directory, for any applications
+    called by an ebuild. Must not be used by ebuilds directly; see \t{T} above. \\
+\t{HOME} &
+    All &
+    Ditto &
+    The full path to an appropriate temporary directory for use by any programs invoked by the
+    ebuild that may read or modify the home directory. \\
+\t{EPREFIX} &
+    All &
+    Yes &
+    The normalised offset-prefix path of an offset installation.  When \t{EPREFIX} is not set in the
+    calling environment, \t{EPREFIX} defaults to the built-in offset-prefix that was set during
+    installation of the package manager. When a different \t{EPREFIX} value than the built-in value
+    is set in the calling environment, a cross-prefix build is performed where using the existing
+    utilities, a package is built for the given \t{EPREFIX}, akin to \t{ROOT}\@.
+    See also~\ref{sec:offset-vars}. Only for EAPIs listed in table~\ref{tab:offset-env-vars-table}
+    as supporting \t{EPREFIX}. \\
+\t{D} &
+    \t{src_install} &
+    No &
+    Contains the full path to the image directory into which the package should be installed.
+    The presence of a trailing slash is EAPI dependent as listed in table~\ref{tab:trailing-slash}.
+    \\
+\t{D} (continued) &
+    \t{pkg_preinst}, \t{pkg_postinst} &
+    Yes &
+    Contains the full path to the image that is about to be or has just been merged.
+    The presence of a trailing slash is EAPI dependent as listed in table~\ref{tab:trailing-slash}.
+    \\
+\t{ED} &
+    \t{src_install}, \t{pkg_preinst}, \t{pkg_postinst} &
+    See \t{D} &
+    Contains the concatenation of the paths in the \t{D} and \t{EPREFIX} variables,
+    for convenience. See also the \t{EPREFIX} variable. Only for EAPIs listed in
+    table~\ref{tab:offset-env-vars-table} as supporting \t{ED}\@. The presence of a trailing slash
+    is EAPI dependent as listed in table~\ref{tab:trailing-slash}. \\
+\t{DESTTREE} &
+    \t{src_install} &
+    No &
+    \featurelabel{desttree} Controls the location where \t{dobin}, \t{dolib}, \t{domo},
+    and \t{dosbin} install things. Only for EAPIs listed in table~\ref{tab:removed-env-vars-table}
+    as supporting \t{DESTTREE}. In all other EAPIs, this is retained as a conceptual variable not
+    exported to the ebuild environment. \\
+\t{INSDESTTREE} &
+    \t{src_install} &
+    No &
+    \featurelabel{insdesttree} Controls the location where \t{doins} installs things. Only for EAPIs
+    listed in table~\ref{tab:removed-env-vars-table} as supporting \t{INSDESTTREE}. In all other
+    EAPIs, this is retained as a conceptual variable not exported to the ebuild environment. \\
+\t{USE} &
+    All &
+    Yes &
+    A whitespace-delimited list of all active USE flags for this ebuild. See
+    section~\ref{sec:use-iuse-handling} for details. \\
+\t{EBUILD_PHASE} &
+    All &
+    No &
+    Takes one of the values \t{config}, \t{setup}, \t{nofetch}, \t{unpack}, \t{prepare},
+    \t{configure}, \t{compile}, \t{test}, \t{install}, \t{preinst}, \t{postinst}, \t{prerm},
+    \t{postrm}, \t{info}, \t{pretend} according to the top level ebuild function that was executed
+    by the package manager. May be unset or any single word that is not any of the above when the
+    ebuild is being sourced for other (e.\,g.\ metadata or QA) purposes. \\
+\t{EBUILD_PHASE_FUNC} &
+    All &
+    No &
+    \featurelabel{ebuild-phase-func} Takes one of the values \t{pkg_config}, \t{pkg_setup},
+    \t{pkg_nofetch}, \t{src_unpack}, \t{src_prepare}, \t{src_configure}, \t{src_compile},
+    \t{src_test}, \t{src_install}, \t{pkg_preinst}, \t{pkg_postinst}, \t{pkg_prerm},
+    \t{pkg_postrm}, \t{pkg_info}, \t{pkg_pretend} according to the top level ebuild function that
+    was executed by the package manager. May be unset or any single word that is not any of the
+    above when the ebuild is being sourced for other (e.\,g.\ metadata or QA) purposes. Only for
+    EAPIs listed in table~\ref{tab:added-env-vars-table} as supporting \t{EBUILD_PHASE_FUNC}. \\
+\t{KV} &
+    All &
+    Yes &
+    \featurelabel{kv} The version of the running kernel at the time the ebuild was first executed,
+    as returned by the \t{uname~-r} command or equivalent.  May be modified by ebuilds.  Only for
+    EAPIs listed in table~\ref{tab:removed-env-vars-table} as supporting \t{KV}. \\
+\t{MERGE_TYPE} &
+    \t{pkg_*} &
+    No &
+    \featurelabel{merge-type} The type of package that is being merged. Possible values are:
+    \t{source} if building and installing a package from source, \t{binary} if installing a binary
+    package, and \t{buildonly} if building a binary package without installing it. Only for EAPIs
+    listed in table~\ref{tab:added-env-vars-table} as supporting \t{MERGE_TYPE}. \\
+\t{REPLACING_VERSIONS} &
+    \t{pkg_*} (see text) &
+    Yes &
+    A list of all versions of this package (including revision, if specified), whitespace separated
+    with no leading or trailing whitespace, that are being replaced (uninstalled or overwritten)
+    as a result of this install. See section~\ref{sec:replacing-versions}. Only for EAPIs listed
+    in table~\ref{tab:added-env-vars-table} as supporting \t{REPLACING_VERSIONS}. \\
+\t{REPLACED_BY_VERSION} &
+    \t{pkg_prerm}, \t{pkg_postrm} &
+    Yes &
+    The single version of this package (including revision, if specified) that is replacing us, if
+    we are being uninstalled as part of an install, or an empty string otherwise. See
+    section~\ref{sec:replacing-versions}.  Only for EAPIs listed in table~\ref{tab:added-env-vars-table}
+    as supporting \t{REPLACED_BY_VERSION}.
+\end{longtable}
+\end{landscape}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting various added env variables}
+    \label{tab:added-env-vars-table}
+    \begin{tabular}{lllllll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{P{3.25em}}{\textbf{\t{MERGE_TYPE}?}} &
+      \multicolumn{1}{P{5.25em}}{\textbf{\t{REPLACING_VERSIONS}?}} &
+      \multicolumn{1}{P{5.75em}}{\textbf{\t{REPLACED_BY_VERSION}?}} &
+      \multicolumn{1}{P{5.75em}}{\textbf{\t{EBUILD_PHASE_FUNC}?}} &
+      \multicolumn{1}{c}{\textbf{\t{SYSROOT}?}} &
+      \multicolumn{1}{c}{\textbf{\t{BROOT}?}} \\
+      \midrule
+      0, 1, 2, 3        & No  & No  & No  & No  & No  & No  \\
+      4                 & Yes & Yes & Yes & No  & No  & No  \\
+      5, 6              & Yes & Yes & Yes & Yes & No  & No  \\
+      7                 & Yes & Yes & Yes & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting various removed env variables}
+    \label{tab:removed-env-vars-table}
+    \begin{tabular}{lllllll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{AA}?}} &
+      \multicolumn{1}{c}{\textbf{\t{KV}?}} &
+      \multicolumn{1}{c}{\textbf{\t{PORTDIR}?}} &
+      \multicolumn{1}{c}{\textbf{\t{ECLASSDIR}?}} &
+      \multicolumn{1}{c}{\textbf{\t{DESTTREE}?}} &
+      \multicolumn{1}{c}{\textbf{\t{INSDESTTREE}?}} \\
+      \midrule
+      0, 1, 2, 3        & Yes & Yes & Yes & Yes & Yes & Yes \\
+      4, 5, 6           & No  & No  & Yes & Yes & Yes & Yes \\
+      7                 & No  & No  & No  & No  & No  & No  \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting offset-prefix env variables}
+    \label{tab:offset-env-vars-table}
+    \begin{tabular}{lllll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{EPREFIX}?}} &
+      \multicolumn{1}{c}{\textbf{\t{EROOT}?}} &
+      \multicolumn{1}{c}{\textbf{\t{ED}?}} &
+      \multicolumn{1}{c}{\textbf{\t{ESYSROOT}?}} \\
+      \midrule
+      0, 1, 2           & No  & No  & No  & No  \\
+      3, 4, 5, 6        & Yes & Yes & Yes & No  \\
+      7                 & Yes & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+Except where otherwise noted, all variables set in the active profiles' \t{make.defaults} files must
+be exported to the ebuild environment. \t{CHOST}, \t{CBUILD} and \t{CTARGET}, if not set by
+profiles, must contain either an appropriate machine tuple (the definition of appropriate is beyond
+the scope of this specification) or be unset.
+
+\t{PATH} must be initialized by the package manager to a ``usable'' default.  The exact value here
+is left up to interpretation, but it should include the equivalent ``sbin'' and ``bin'' and any
+package manager specific directories.
+
+\t{GZIP}, \t{BZIP}, \t{BZIP2}, \t{CDPATH}, \t{GREP_OPTIONS}, \t{GREP_COLOR} and \t{GLOBIGNORE}
+must not be set.
+\featurelabel{env-unset} In addition, any variable whose name appears in the \t{ENV_UNSET} variable
+must be unset, for EAPIs listed in table~\ref{tab:profile-env-unset} as supporting \t{ENV_UNSET}.
+
+\featurelabel{locale-settings} The package manager must ensure that the \t{LC_CTYPE} and
+\t{LC_COLLATE} locale categories are equivalent to the POSIX locale, as far as characters in the
+ASCII range (U+0000 to U+007F) are concerned. Only for EAPIs listed in such a manner in
+table~\ref{tab:locale-settings}.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Locale settings for EAPIs}
+    \label{tab:locale-settings}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Sane \t{LC_CTYPE} and \t{LC_COLLATE}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5  & Undefined \\
+      6, 7              & Yes       \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{USE and IUSE handling}
+\label{sec:use-iuse-handling}
+
+This section discusses the handling of four variables:
+
+\begin{description}
+\item[IUSE] is the variable calculated from the \t{IUSE} values defined in ebuilds and eclasses.
+\item[IUSE_REFERENCEABLE] is a variable calculated from \t{IUSE} and a variety of other sources
+    described below. It is purely a conceptual variable; it is not exported to the ebuild
+    environment. Values in \t{IUSE_REFERENCEABLE} may legally be used in queries from other
+    packages about an ebuild's state (for example, for use dependencies).
+\item[IUSE_EFFECTIVE] is another conceptual, unexported variable. Values in \t{IUSE_EFFECTIVE} are
+    those which an ebuild may legally use in queries about itself (for example, for the \t{use}
+    function, and for use in dependency specification conditional blocks).
+\item[USE] is a variable calculated by the package manager and exported to the ebuild environment.
+\end{description}
+
+In all cases, the values of \t{IUSE_REFERENCEABLE} and \t{IUSE_EFFECTIVE} are undefined during
+metadata generation.
+
+For EAPIs listed in table~\ref{tab:profile-iuse-injection-table} as not supporting profile defined
+\t{IUSE} injection, \t{IUSE_REFERENCEABLE} is equal to the calculated \t{IUSE} value. For EAPIs
+where profile defined \t{IUSE} injection is supported, \t{IUSE_REFERENCEABLE} is equal to
+\t{IUSE_EFFECTIVE}.
+
+For EAPIs listed in table~\ref{tab:profile-iuse-injection-table} as not supporting profile defined
+\t{IUSE} injection, \t{IUSE_EFFECTIVE} contains the following values:
+
+\begin{compactitem}
+\item All values in the calculated \t{IUSE} value.
+\item All possible values for the \t{ARCH} variable.
+\item All legal use flag names whose name starts with the lowercase equivalent of any value in
+    the profile \t{USE_EXPAND} variable followed by an underscore.
+\end{compactitem}
+
+\featurelabel{profile-iuse-inject} For EAPIs listed in table~\ref{tab:profile-iuse-injection-table}
+as supporting profile defined \t{IUSE} injection, \t{IUSE_EFFECTIVE} contains the following values:
+
+\begin{compactitem}
+\item All values in the calculated \t{IUSE} value.
+\item All values in the profile \t{IUSE_IMPLICIT} variable.
+\item All values in the profile variable named \t{USE_EXPAND_VALUES_\$\{v\}}, where \t{\$\{v\}}
+    is any value in the intersection of the profile \t{USE_EXPAND_UNPREFIXED} and
+    \t{USE_EXPAND_IMPLICIT} variables.
+\item All values for \t{\$\{lower_v\}_\$\{x\}}, where \t{\$\{x\}} is all values in the profile
+    variable named \t{USE_EXPAND_VALUES_\$\{v\}}, where \t{\$\{v\}} is any value in the
+    intersection of the profile \t{USE_EXPAND} and \t{USE_EXPAND_IMPLICIT} variables and
+    \t{\$\{lower_v\}} is the lowercase equivalent of \t{\$\{v\}}.
+\end{compactitem}
+
+The \t{USE} variable is set by the package manager. For each value in \t{IUSE_EFFECTIVE}, \t{USE}
+shall contain that value if the flag is to be enabled for the ebuild in question, and shall not
+contain that value if it is to be disabled. In EAPIs listed in
+table~\ref{tab:profile-iuse-injection-table} as not supporting profile defined \t{IUSE} injection,
+\t{USE} may contain other flag names that are not relevant for the ebuild.
+
+For EAPIs listed in table~\ref{tab:profile-iuse-injection-table} as supporting profile defined
+\t{IUSE} injection, the variables named in \t{USE_EXPAND} and \t{USE_EXPAND_UNPREFIXED} shall
+have their profile-provided values reduced to contain only those values that are present in
+\t{IUSE_EFFECTIVE}.
+
+For EAPIs listed in table~\ref{tab:profile-iuse-injection-table} as supporting profile defined
+\t{IUSE} injection, the package manager must save the calculated value of \t{IUSE_EFFECTIVE} when
+installing a package. Details are beyond the scope of this specification.
+
+\subsection{REPLACING_VERSIONS and REPLACED_BY_VERSION}
+\label{sec:replacing-versions}
+
+\featurelabel{replace-version-vars} In EAPIs listed in table~\ref{tab:added-env-vars-table} as
+supporting it, the \t{REPLACING_VERSIONS} variable shall be defined in \t{pkg_preinst} and
+\t{pkg_postinst}.  In addition, it \e{may} be defined in \t{pkg_pretend} and \t{pkg_setup},
+although ebuild authors should take care to handle binary package creation and installation
+correctly when using it in these phases.
+
+\t{REPLACING_VERSIONS} is a list, not a single optional value, to handle pathological cases such as
+installing \t{foo-2:2} to replace \t{foo-2:1} and \t{foo-3:2}.
+
+In EAPIs listed in table~\ref{tab:added-env-vars-table} as supporting it, the
+\t{REPLACED_BY_VERSION} variable shall be defined in \t{pkg_prerm} and \t{pkg_postrm}. It shall
+contain at most one value.
+
+\subsection{Offset-prefix variables}
+\label{sec:offset-vars}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting offset-prefix}
+    \label{tab:offset-support-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports offset-prefix?}}\\
+      \midrule
+      0, 1, 2           & No  \\
+      3, 4, 5, 6, 7     & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\featurelabel{offset-prefix-vars} Table~\ref{tab:offset-support-table} lists the EAPIs which
+support offset-prefix installations. This support was initially added in EAPI 3, in the form of
+three extra variables. Two of these, \t{EROOT} and \t{ED}, are convenience variables using the
+variable \t{EPREFIX}\@. In EAPIs that do not support an offset-prefix, the installation offset is
+hardwired to \t{/usr}. In offset-prefix supporting EAPIs the installation offset is set as
+\t{\$\{EPREFIX\}/usr} and hence can be adjusted using the variable \t{EPREFIX}\@. Note that the
+behaviour of offset-prefix aware and agnostic is the same when \t{EPREFIX} is set to the empty
+string in offset-prefix aware EAPIs. The latter do have the variables \t{ED} and \t{EROOT} properly
+set, though.
+
+\subsection{Path variables and trailing slash}
+\label{sec:trailing-slash}
+
+Unless specified otherwise, the paths provided through package manager variables do not end with
+a trailing slash and cannot be empty. A few exceptions to that rule are listed
+in table~\ref{tab:trailing-slash} along with applicable EAPIs.
+
+For EAPIs where those variables are defined to always end with a trailing slash, the package manager
+guarantees that a trailing slash will always be appended to the path in question. If the path
+specifies the system root directory, it will consist of a single slash (\t{/}).
+
+\featurelabel{trailing-slash} For EAPIs where those variables are defined to never end with
+a trailing slash, the package manager guarantees that a trailing slash will never be present.
+If the path specifies the system root directory, it will be empty.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Variables that always or never end with a trailing slash}
+    \label{tab:trailing-slash}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{2}{c}{\textbf{Ends with a trailing slash?}} \\
+      &
+      \t{ROOT}, \t{EROOT} &
+      \t{D}, \t{ED} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & always & always \\
+      7                   & never  & never  \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

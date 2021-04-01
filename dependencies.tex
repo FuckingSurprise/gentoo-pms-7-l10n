@@ -1,0 +1,471 @@
+\chapter{Dependencies}
+\label{sec:dependencies}
+
+\section{Dependency Classes}
+\label{sec:dependency-classes}
+
+\begin{centertable}{Dependency classes required to be satisfied for a particular phase function}
+    \label{tab:phase-function-dependency-classes}
+    \begin{tabular}{P{13.5em} P{0.6\textwidth}}
+      \toprule
+      \multicolumn{1}{c}{\textbf{Phase function}} &
+      \multicolumn{1}{c}{\textbf{Satisfied dependency classes}} \\
+      \midrule
+      \t{pkg_pretend}, \t{pkg_setup}, \t{pkg_info}, \t{pkg_nofetch} &
+          None (ebuilds can rely only on the packages in the system~set) \\
+      \addlinespace
+      \t{src_unpack}, \t{src_prepare}, \t{src_configure}, \t{src_compile}, \t{src_test},
+          \t{src_install} & \t{DEPEND}, \t{BDEPEND} \\
+      \addlinespace
+      \t{pkg_preinst}, \t{pkg_postinst}, \t{pkg_prerm}, \t{pkg_postrm} &
+          \t{RDEPEND} (unless the particular dependency results in a circular dependency, in which
+          case it may be installed later) \\
+      \addlinespace
+      \t{pkg_config} & \t{RDEPEND}, \t{PDEPEND} \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\begin{centertable}{Summary of other interfaces related to dependency classes}
+    \label{tab:dep-class-api}
+    \begin{tabular}{llll}
+      \toprule
+                                & \t{BDEPEND}     & \t{DEPEND}         & \t{RDEPEND}, \t{PDEPEND} \\
+      \midrule
+      Binary compatible with    & \t{CBUILD}      & \t{CHOST}          & \t{CHOST}         \\
+      Base unprefixed path      & \t{/}           & \t{\$\{SYSROOT\}}  & \t{\$\{ROOT\}}    \\
+      Relevant offset-prefix    & \t{\$\{BROOT\}} & \t{\$\{EPREFIX\}}  & \t{\$\{EPREFIX\}} \\
+      Path combined with prefix & \t{\$\{BROOT\}} & \t{\$\{ESYSROOT\}} & \t{\$\{EROOT\}}   \\
+      PM query command option   & \t{-b}          & \t{-d}             & \t{-r}            \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+There are three classes of dependencies supported by ebuilds:
+
+\begin{compactitem}
+\item Build dependencies (\t{DEPEND}). These must be installed and usable before any of
+    the ebuild \t{src_*} phase functions is executed. These may not be installed at all
+    if a binary package is being merged.
+\item Runtime dependencies (\t{RDEPEND}). These must be installed and usable before
+    the results of an ebuild merging are treated as usable.
+\item Post dependencies (\t{PDEPEND}). These must be installed at some point before
+    the package manager finishes the batch of installs.
+\end{compactitem}
+
+\featurelabel{bdepend} Additionally, in EAPIs listed in table~\ref{tab:depend-table}
+as supporting \t{BDEPEND}, the build dependencies are split into two subclasses:
+
+\begin{compactitem}
+\item \t{BDEPEND} build dependencies that are binary compatible with the native build system
+    (\t{CBUILD}). The ebuild is allowed to call binary executables installed by this kind of
+    dependency.
+    \item \t{DEPEND} build dependencies that are binary compatible with the system being built
+    (\t{CHOST}). The ebuild must not execute binary executables installed by this kind of
+    dependency.
+\end{compactitem}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting additional dependency types}
+    \label{tab:depend-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{BDEPEND}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & No  \\
+      7                   & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+Table~\ref{tab:phase-function-dependency-classes} lists dependencies which must be satisfied before
+a particular phase function is executed. Table~\ref{tab:dep-class-api} summarises additional
+interfaces related to the dependency classes.
+
+In addition, \t{SRC_URI}, \t{HOMEPAGE}, \t{RESTRICT}, \t{PROPERTIES}, \t{LICENSE} and
+\t{REQUIRED_USE} use dependency-style specifications to specify their values.
+
+\section{Dependency Specification Format}
+\label{sec:dependency-spec}
+
+The following elements are recognised in at least one class of specification. All elements must
+be surrounded on both sides by whitespace, except at the start and end of the string.
+
+\begin{compactitem}
+\item A package dependency specification. Permitted in \t{DEPEND}, \t{BDEPEND}, \t{RDEPEND},
+    \t{PDEPEND}.
+\item A URI, in the form \t{proto://host/path}. Permitted in \t{SRC_URI} and \t{HOMEPAGE}\@.
+    In EAPIs listed in table~\ref{tab:uri-arrows-table} as supporting \t{SRC_URI} arrows, may
+    optionally be followed by whitespace, then \t{->}, then whitespace, then a simple filename when
+    in \t{SRC_URI}\@. For \t{SRC_URI} behaviour, see section~\ref{sec:src-uri-behaviour}.
+\item A flat filename. Permitted in \t{SRC_URI}.
+\item A license name (e.\,g.\ \t{GPL-2}). Permitted in \t{LICENSE}.
+\item A use flag name, optionally preceded by an exclamation mark. Permitted in \t{REQUIRED_USE}.
+\item A simple string. Permitted in \t{RESTRICT} and \t{PROPERTIES}.
+\item An all-of group, which consists of an open parenthesis, followed by whitespace,
+    followed by one or more of (a dependency item of any kind followed by whitespace), followed
+    by a close parenthesis. More formally:
+    \t{all-of} \t{::=} \t{'(' whitespace (item whitespace)+ ')'}. Permitted in all specification
+    style variables.
+\item An any-of group, which consists of the string \t{||}, followed by whitespace,
+    followed by an open parenthesis, followed by whitespace, followed by one or more
+    of (a dependency item of any kind followed by whitespace), followed by a close parenthesis.
+    More formally: \t{any-of} \t{::=} \t{'||' whitespace '(' whitespace (item whitespace)+ ')'}.
+    Permitted in \t{DEPEND}, \t{BDEPEND}, \t{RDEPEND}, \t{PDEPEND}, \t{LICENSE}, \t{REQUIRED_USE}.
+\item An exactly-one-of group, which has the same format as the any-of group, but begins with the
+    string \t{\textasciicircum\textasciicircum} instead. Permitted in \t{REQUIRED_USE}.
+\item \featurelabel{at-most-one-of} An at-most-one-of group, which has the same format as the
+    any-of group, but begins with the string \t{??}\ instead. Permitted in \t{REQUIRED_USE} in
+    EAPIs listed in table~\ref{tab:at-most-one-of-table} as supporting \t{REQUIRED_USE ??}\ groups.
+\item A use-conditional group, which consists of an optional exclamation mark, followed by
+    a use flag name, followed by a question mark, followed by whitespace, followed by
+    an open parenthesis, followed by whitespace, followed by one or more of (a dependency item
+    of any kind followed by whitespace), followed by a close parenthesis. More formally:
+    \t{use-conditional} \t{::=} \t{'!'?\ flag-name '?'\ whitespace '(' whitespace (item
+    whitespace)+ ')'}.
+    Permitted in all specification style variables.
+\end{compactitem}
+
+In particular, note that whitespace is not optional.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{SRC_URI} arrows}
+    \label{tab:uri-arrows-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{SRC_URI} arrows?}} \\
+      \midrule
+      0, 1              & No  \\
+      2, 3, 4, 5, 6, 7  & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{REQUIRED_USE ??}\ groups}
+    \label{tab:at-most-one-of-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{REQUIRED_USE ??}\ groups?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  \\
+      5, 6, 7           & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{All-of dependency specifications}
+
+In an all-of group, all of the child elements must be matched.
+
+\subsection{USE-conditional dependency specifications}
+
+In a use-conditional group, if the associated use flag is enabled (or disabled if it has an
+exclamation mark prefix), all of the child elements must be matched.
+
+It is an error for a flag to be used if it is not included in \t{IUSE_EFFECTIVE} as described in
+section~\ref{sec:use-iuse-handling}.
+
+\subsection{Any-of dependency specifications}
+
+Any use-conditional group that is an immediate child of an any-of group, if not enabled (disabled
+for an exclamation mark prefixed use flag name), is not considered a member of the any-of group
+for match purposes.
+
+In an any-of group, at least one immediate child element must be matched. A blocker is
+considered to be matched if its associated package dependency specification is not matched.
+
+\featurelabel{empty-dep-groups} In EAPIs specified in table~\ref{tab:empty-dep-groups}, an empty
+any-of group counts as being matched.
+
+\subsection{Exactly-one-of dependency specifications}
+
+Any use-conditional group that is an immediate child of an exactly-one-of group, if not enabled
+(disabled for an exclamation mark prefixed use flag name), is not considered a member of the
+exactly-one-of group for match purposes.
+
+In an exactly-one-of group, exactly one immediate child element must be matched.
+
+In EAPIs specified in table~\ref{tab:empty-dep-groups}, an empty exactly-one-of group counts as
+being matched.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Matching of empty dependency groups in EAPIs}
+    \label{tab:empty-dep-groups}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Empty \t{||} and \t{\textasciicircum\textasciicircum} groups
+        are matched?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & Yes \\
+      7                   & No  \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{At-most-one-of dependency specifications}
+
+Any use-conditional group that is an immediate child of an at-most-one-of group, if not enabled
+(disabled for an exclamation mark prefixed use flag name), is not considered a member of the
+at-most-one-of group for match purposes.
+
+In an at-most-one-of group, at most one immediate child element must be matched.
+
+\subsection{Package dependency specifications}
+
+A package dependency can be in one of the following base formats. A package manager must warn or
+error on non-compliant input.
+
+\begin{compactitem}
+\item A simple \t{category/package} name.
+\item An operator, as described in section~\ref{sec:dep-operator}, followed immediately by
+    \t{category/package}, followed by a hyphen, followed by a version specification.
+\end{compactitem}
+
+In EAPIs shown in table~\ref{tab:slot-deps-table} as supporting \t{SLOT} dependencies, either of the
+above formats may additionally be suffixed by a \t{:slot} restriction, as described in
+section~\ref{sec:slot-dep}. A package manager must warn or error if slot dependencies are used with an
+EAPI not supporting \t{SLOT} dependencies.
+
+\featurelabel{use-deps} In EAPIs shown in table~\ref{tab:use-deps-table} as supporting 2-style
+or 4-style \t{USE} dependencies, a specification may additionally be suffixed by at most one
+2-style or 4-style \t{[use]} restriction, as described in section~\ref{sec:use-dep}. A package
+manager must warn or error if this feature is used with an EAPI not supporting use dependencies.
+
+\note{Order is important. The slot restriction must come before use dependencies.}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Support for \t{SLOT} dependencies and sub-slots in EAPIs}
+    \label{tab:slot-deps-table}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{SLOT} dependencies?}} &
+      \multicolumn{1}{c}{\textbf{Supports sub-slots?}} \\
+      \midrule
+      0                 & No                 & No  \\
+      1, 2, 3, 4        & Named only         & No  \\
+      5, 6, 7           & Named and operator & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{USE} dependencies}
+    \label{tab:use-deps-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{USE} dependencies?}} \\
+      \midrule
+      0, 1              & No      \\
+      2, 3              & 2-style \\
+      4, 5, 6, 7        & 4-style \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsubsection{Operators}
+\label{sec:dep-operator}
+
+The following operators are available:
+
+\begin{description}
+\item[\t{<}] Strictly less than the specified version.
+\item[\t{<=}] Less than or equal to the specified version.
+\item[\t{=}] Exactly equal to the specified version. Special exception: if the version specified
+    has an asterisk immediately following it, then only the given number of version components
+    is used for comparison, i.\,e.\ the asterisk acts as a wildcard for any further components.
+    When an asterisk is used, the specification must remain valid if the asterisk were removed.
+    (An asterisk used with any other operator is illegal.)
+\item[\t{\textasciitilde}] Equal to the specified version when revision parts are ignored.
+\item[\t{>=}] Greater than or equal to the specified version.
+\item[\t{>}] Strictly greater than the specified version.
+\end{description}
+
+\subsubsection{Block operator}
+
+If the specification is prefixed with one or two exclamation marks, the named dependency is a block
+rather than a requirement---that is to say, the specified package must not be installed, with the
+following exceptions:
+
+\begin{compactitem}
+\item Blocks on a package provided exclusively by the ebuild do not count.
+\item Weak blocks on the package version of the ebuild itself do not count.
+\end{compactitem}
+
+\featurelabel{bang-strength} There are two strengths of block: weak and strong. A weak block may be
+ignored by the package manager, so long as any blocked package will be uninstalled later on. A
+strong block must not be ignored. The mapping from one or two exclamation marks to strength is
+described in table~\ref{tab:bang-strength-table}.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Exclamation mark strengths for EAPIs}
+    \label{tab:bang-strength-table}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{!}}} &
+      \multicolumn{1}{c}{\textbf{\t{!!}}} \\
+      \midrule
+      0, 1              & Unspecified & Forbidden \\
+      2, 3, 4, 5, 6, 7  & Weak        & Strong    \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsubsection{Slot dependencies}
+\label{sec:slot-dep}
+
+\featurelabel{slot-deps} A named slot dependency consists of a colon followed by a slot name. A
+specification with a named slot dependency matches only if the slot of the matched package is equal
+to the slot specified. If the slot of the package to match cannot be determined (e.\,g.\ because it
+is not a supported \t{EAPI}), the match is treated as unsuccessful.
+
+\featurelabel{sub-slot} In EAPIs shown in table~\ref{tab:slot-deps-table} as supporting sub-slots,
+a slot dependency may contain an optional sub-slot part that follows the regular slot and is
+delimited by a \t{/} character.
+
+\featurelabel{slot-operator-deps} An operator slot dependency consists of a colon followed by one of
+the following operators:
+
+\begin{description}
+\item[*] Indicates that any slot value is acceptable. In addition, for runtime dependencies,
+indicates that the package will not break if the matched package is uninstalled and replaced by
+a different matching package in a different slot.
+\item[=] Indicates that any slot value is acceptable. In addition, for runtime dependencies,
+indicates that the package will break unless a matching package with slot and sub-slot equal to the
+slot and sub-slot of the best version installed as a build-time (\t{DEPEND}) dependency is
+available.
+\item[slot=] Indicates that only a specific slot value is acceptable, and otherwise behaves
+identically to the plain equals slot operator.
+\end{description}
+
+To implement the equals slot operator, the package manager will need to store the slot/sub-slot
+pair of the best installed version of the matching package. This syntax is only for package manager
+use and must not be used by ebuilds. The package manager may do this by inserting the appropriate
+slot/sub-slot pair between the colon and equals sign when saving the package's dependencies. The
+sub-slot part must not be omitted here (when the SLOT variable omits the sub-slot part, the package
+is considered to have an implicit sub-slot which is equal to the regular slot).
+
+Whenever the equals slot operator is used in an enabled dependency group, the dependencies
+(\t{DEPEND}) must ensure that a matching package is installed at build time. It is invalid to use
+the equals slot operator inside \t{PDEPEND} or inside any-of dependency specifications.
+
+\subsubsection{2-style and 4-style USE dependencies}
+\label{sec:use-dep}
+
+A 2-style or 4-style use dependency consists of one of the following:
+
+\begin{description}
+\item[{[opt]}] The flag must be enabled.
+\item[{[opt=]}] The flag must be enabled if the flag is enabled for the package with the
+    dependency, or disabled otherwise.
+\item[{[!opt=]}] The flag must be disabled if the flag is enabled for the package with the
+    dependency, or enabled otherwise.
+\item[{[opt?]}] The flag must be enabled if the flag is enabled for the package with the
+    dependency.
+\item[{[!opt?]}] The flag must be disabled if the use flag is disabled for the package with the
+    dependency.
+\item[{[-opt]}] The flag must be disabled.
+\end{description}
+
+Multiple requirements may be combined using commas, e.\,g.\ \t{[first,-second,third?]}.
+
+When multiple requirements are specified, all must match for a successful match.
+
+\featurelabel{use-dep-defaults} In a 4-style use dependency, the flag name may immediately be
+followed by a \e{default} specified by either \t{(+)} or \t{(-)}. The former indicates that, when
+applying the use dependency to a package that does not have the flag in question in
+\t{IUSE_REFERENCEABLE}, the package manager shall behave as if the flag were present and enabled;
+the latter, present and disabled.
+
+Unless a 4-style default is specified, it is an error for a use dependency to be applied to an
+ebuild which does not have the flag in question in \t{IUSE_REFERENCEABLE}.
+
+\note{By extension of the above, a default that could reference an ebuild using an EAPI not
+supporting profile \t{IUSE} injections cannot rely upon any particular behaviour for flags that
+would not have to be part of \t{IUSE}.}
+
+It is an error for an ebuild to use a conditional use dependency when that ebuild does not have the
+flag in \t{IUSE_EFFECTIVE}.
+
+\subsection{USE state constraints}
+\label{sec:required-use}
+\t{REQUIRED_USE} contains a list of assertions that must be met by the configuration of \t{USE}
+flags to be valid for this ebuild. In order to be matched, a \t{USE} flag in a terminal element
+must be enabled (or disabled if it has an exclamation mark prefix).
+
+If the package manager encounters a package version where \t{REQUIRED_USE} assertions are not met,
+it must treat this package version as if it was masked. No phase functions must be called.
+
+It is an error for a flag to be used if it is not included in \t{IUSE_EFFECTIVE}.
+
+\subsection{Restrict}
+\label{sec:restrict}
+
+The following tokens are permitted inside \t{RESTRICT}:
+
+\begin{description}
+\item[mirror] The package's \t{SRC_URI} entries may not be mirrored, and mirrors should not
+    be checked when fetching.
+\item[fetch] The package's \t{SRC_URI} entries may not be downloaded automatically. If
+    entries are not available, \t{pkg_nofetch} is called. Implies \t{mirror}.
+\item[strip] No stripping of debug symbols from files to be installed may be performed. In EAPIs
+    listed in table~\ref{tab:staging-area-commands} as supporting controllable stripping, this
+    behaviour may be altered by the \t{dostrip} command.
+\item[userpriv] The package manager may not drop root privileges when building the package.
+\item[test] The \t{src_test} phase must not be run.
+\end{description}
+
+Package managers may recognise other tokens, but ebuilds may not rely upon them being supported.
+
+\subsection{Properties}
+\label{sec:properties}
+
+The following tokens are permitted inside \t{PROPERTIES}:
+
+\begin{description}
+\item[interactive] The package may require interaction with the user via the tty.
+\end{description}
+
+Ebuilds may not rely upon any token being supported.
+
+\subsection{SRC_URI}
+\label{sec:src-uri-behaviour}
+
+All filename components that are enabled (i.\,e.\ not inside a use-conditional block that is not
+matched) in \t{SRC_URI} must be available in the \t{DISTDIR} directory. In addition, these
+components are used to make the \t{A} and \t{AA} variables.
+
+If a component contains a full URI with protocol, that download location must be used. Package
+managers may also consult mirrors for their files.
+
+The special \t{mirror://} protocol must be supported. See section~\ref{sec:thirdpartymirrors} for mirror
+details.
+
+If a simple filename rather than a full URI is provided, the package manager can only use mirrors to
+download the file.
+
+The \t{RESTRICT} metadata key can be used to impose additional restrictions upon downloading---see
+section~\ref{sec:restrict} for details.
+
+\featurelabel{src-uri-arrows} In EAPIs supporting arrows, if an arrow is used, the filename used
+when saving to \t{DISTDIR} shall instead be the name on the right of the arrow. When consulting
+mirrors (except for those explicitly listed on the left of the arrow, if \t{mirror://} is used), the
+filename to the right of the arrow shall be requested instead of the filename in the URI.
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

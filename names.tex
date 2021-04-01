@@ -1,0 +1,227 @@
+\chapter{Names and Versions}
+
+\section{Restrictions upon Names}
+
+No name may be empty. Package managers must not impose fixed upper boundaries upon the length of any
+name. A package manager should indicate or reject any name that is invalid according to these rules.
+
+\subsection{Category names}
+A category name may contain any of the characters [\t{A-Za-z0-9+_.-}]. It must not begin with
+a hyphen, a dot or a plus sign.
+
+\note{A hyphen is \e{not} required because of the \t{virtual} category. Usually, however, category
+names will contain a hyphen.}
+
+\subsection{Package names}
+\label{sec:package-names}
+A package name may contain any of the characters [\t{A-Za-z0-9+_-}]. It must not begin with a
+hyphen or a plus sign, and must not end in a hyphen followed by anything matching the version
+syntax described in section~\ref{sec:version-spec}.
+
+\note{A package name does not include the category. The term \i{qualified package name} is used
+where a \t{category/package} pair is meant.}
+
+\subsection{Slot names}
+\label{sec:slot-names}
+A slot name may contain any of the characters [\t{A-Za-z0-9+_.-}]. It must not begin with a
+hyphen, a dot or a plus sign.
+
+\subsection{USE flag names}
+A USE flag name may contain any of the characters [\t{A-Za-z0-9+_@-}]. It must begin with an
+alphanumeric character. Underscores should be considered reserved for \t{USE_EXPAND}, as
+described in section~\ref{sec:use-iuse-handling}.
+
+\note{Usage of the at-sign is deprecated. It was previously required for \t{LINGUAS}.}
+
+\subsection{Repository names}
+\label{sec:repository-names}
+A repository name may contain any of the characters [\t{A-Za-z0-9_-}]. It must not begin with a
+hyphen. In addition, every repository name must also be a valid package name.
+
+\subsection{License names}
+\label{sec:license-names}
+A license name may contain any of the characters [\t{A-Za-z0-9+_.-}]. It must not begin with a
+hyphen, a dot or a plus sign.
+
+\subsection{Keyword names}
+\label{sec:keyword-names}
+A keyword name may contain any of the characters [\t{A-Za-z0-9_-}]. It must not begin with a
+hyphen. In contexts where it makes sense to do so, a keyword name may be prefixed by
+a tilde or a hyphen. In \t{KEYWORDS}, \t{-*} is also acceptable as a keyword.
+
+\subsection{EAPI names}
+\label{sec:eapi-names}
+An EAPI name may contain any of the characters [\t{A-Za-z0-9+_.-}]. It must not begin with a
+hyphen, a dot or a plus sign.
+
+\section{Version Specifications}
+\label{sec:version-spec}
+The package manager must neither impose fixed limits upon the number of version components, nor
+upon the length of any component. Package managers should indicate or reject any version that is
+invalid according to the rules below.
+
+A version starts with the number part, which is in the form \t{[0-9]+(\textbackslash.[0-9]+)*}
+(an unsigned integer, followed by zero or more dot-prefixed unsigned integers).
+
+This may optionally be followed by one of \t{[a-z]} (a lowercase letter).
+
+This may be followed by zero or more of the suffixes \t{_alpha}, \t{_beta}, \t{_pre}, \t{_rc}
+or \t{_p}, each of which may optionally be followed by an unsigned integer. Suffix and integer
+count as separate version components.
+
+This may optionally be followed by the suffix \t{-r} followed immediately by an unsigned integer
+(the ``revision number''). If this suffix is not present, it is assumed to be \t{-r0}.
+
+\section{Version Comparison}
+
+Version specifications are compared component by component, moving from left to right,
+as detailed in algorithm~\ref{alg:version-comparison} and sub-algorithms.
+If a sub-algorithm returns a decision, then that is the result of the whole comparison;
+if it terminates without returning a decision, the process continues from the point
+from which it was invoked.
+
+\begin{algorithm}[p]
+\caption{Version comparison top-level logic} \label{alg:version-comparison}
+\begin{algorithmic}[1]
+    \STATE let $A$ and $B$ be the versions to be compared
+    \STATE compare numeric components using algorithm~\ref{alg:version-comparison-numeric}
+    \STATE compare letter components using algorithm~\ref{alg:version-comparison-letter}
+    \STATE compare suffixes using algorithm~\ref{alg:version-comparison-suffix}
+    \STATE compare revision components using algorithm~\ref{alg:version-comparison-revision}
+    \RETURN $A=B$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for numeric components} \label{alg:version-comparison-numeric}
+\begin{algorithmic}[1]
+  \STATE define the notations $An_k$ and $Bn_k$ to mean the $k$\textsuperscript{th} numeric
+      component of $A$ and $B$ respectively, using $0$-based indexing
+  \IF{$An_0>Bn_0$ using integer comparison}
+    \RETURN $A>B$
+  \ELSIF{$An_0<Bn_0$ using integer comparison}
+    \RETURN $A<B$
+  \ENDIF
+  \STATE let $Ann$ be the number of numeric components of $A$
+  \STATE let $Bnn$ be the number of numeric components of $B$
+  \FORALL{$i$ such that $i\geq1$ and $i<Ann$ and $i<Bnn$, in ascending order}
+    \STATE compare $An_i$ and $Bn_i$ using algorithm~\ref{alg:version-comparison-numeric-nonfirst}
+  \ENDFOR
+  \IF{$Ann>Bnn$}
+    \RETURN $A>B$
+  \ELSIF{$Ann<Bnn$}
+    \RETURN $A<B$
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for each numeric component after the first}
+\label{alg:version-comparison-numeric-nonfirst}
+\begin{algorithmic}[1]
+  \IF{either $An_i$ or $Bn_i$ has a leading \t{0}}
+    \STATE let $An'_i$ be $An_i$ with any trailing \t{0}s removed
+    \STATE let $Bn'_i$ be $Bn_i$ with any trailing \t{0}s removed
+    \IF{$An'_i>Bn'_i$ using ASCII stringwise comparison}
+      \RETURN $A>B$
+    \ELSIF{$An'_i<Bn'_i$ using ASCII stringwise comparison}
+      \RETURN $A<B$
+    \ENDIF
+  \ELSE
+    \IF{$An_i>Bn_i$ using integer comparison}
+      \RETURN $A>B$
+    \ELSIF{$An_i<Bn_i$ using integer comparison}
+      \RETURN $A<B$
+    \ENDIF
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for letter components} \label{alg:version-comparison-letter}
+\begin{algorithmic}[1]
+  \STATE let $Al$ be the letter component of $A$ if any, otherwise the empty string
+  \STATE let $Bl$ be the letter component of $B$ if any, otherwise the empty string
+  \IF{$Al>Bl$ using ASCII stringwise comparison}
+    \RETURN $A>B$
+  \ELSIF{$Al<Bl$ using ASCII stringwise comparison}
+    \RETURN $A<B$
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for suffixes} \label{alg:version-comparison-suffix}
+\begin{algorithmic}[1]
+  \STATE define the notations $As_k$ and $Bs_k$ to mean the $k$\textsuperscript{th} suffix of $A$
+      and $B$ respectively, using $0$-based indexing
+  \STATE let $Asn$ be the number of suffixes of $A$
+  \STATE let $Bsn$ be the number of suffixes of $B$
+  \FORALL{$i$ such that $i\geq0$ and $i<Asn$ and $i<Bsn$, in ascending order}
+    \STATE compare $As_i$ and $Bs_i$ using algorithm~\ref{alg:version-comparison-suffix-each}
+  \ENDFOR
+  \IF{$Asn>Bsn$}
+    \IF{$As_{Bsn}$ is of type \t{_p}}
+      \RETURN $A>B$
+    \ELSE
+      \RETURN $A<B$
+    \ENDIF
+  \ELSIF{$Asn<Bsn$}
+    \IF{$Bs_{Asn}$ is of type \t{_p}}
+      \RETURN $A<B$
+    \ELSE
+      \RETURN $A>B$
+    \ENDIF
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for each suffix} \label{alg:version-comparison-suffix-each}
+\begin{algorithmic}[1]
+  \IF{$As_i$ and $Bs_i$ are of the same type (\t{_alpha} vs \t{_beta} etc)}
+    \STATE let $As'_i$ be the integer part of $As_i$ if any, otherwise \t{0}
+    \STATE let $Bs'_i$ be the integer part of $Bs_i$ if any, otherwise \t{0}
+    \IF{$As'_i>Bs'_i$, using integer comparison}
+      \RETURN $A>B$
+    \ELSIF{$As'_i<Bs'_i$, using integer comparison}
+      \RETURN $A<B$
+    \ENDIF
+  \ELSIF{the type of $As_i$ is greater than the type of $Bs_i$ using the ordering
+      $\mbox{\t{_alpha}}<\mbox{\t{_beta}}<\mbox{\t{_pre}}<\mbox{\t{_rc}}<\mbox{\t{_p}}$}
+    \RETURN $A>B$
+  \ELSE
+    \RETURN $A<B$
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[p]
+\caption{Version comparison logic for revision components} \label{alg:version-comparison-revision}
+\begin{algorithmic}[1]
+  \STATE let $Ar$ be the integer part of the revision component of $A$ if any, otherwise $\t{0}$
+  \STATE let $Br$ be the integer part of the revision component of $B$ if any, otherwise $\t{0}$
+  \IF{$Ar>Br$ using integer comparison}
+    \RETURN $A>B$
+  \ELSIF{$Ar<Br$ using integer comparison}
+    \RETURN $A<B$
+  \ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\section{Uniqueness of Versions}
+
+No two packages in a given repository may have the same qualified package name and equal versions.
+For example, a repository may not contain more than one of \t{foo-bar/baz-1.0.2},
+\t{foo-bar/baz-1.0.2-r0} and \t{foo-bar/baz-1.000.2}.
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

@@ -1,0 +1,110 @@
+\documentclass{pms}
+
+\title{Package Manager Specification}
+\author{%
+    Stephen P. Bennett \\
+    \href{mailto:spb@exherbo.org}{spb@exherbo.org}
+    \and
+    Christian Faulhammer \\
+    \href{mailto:fauli@gentoo.org}{fauli@gentoo.org}
+    \and
+    Ciaran McCreesh \\
+    \href{mailto:ciaran.mccreesh@googlemail.com}{ciaran.mccreesh@googlemail.com}
+    \and
+    Ulrich Müller \\
+    \href{mailto:ulm@gentoo.org}{ulm@gentoo.org}
+}
+\hypersetup{%
+    pdftitle={Package Manager Specification},
+    pdfauthor={Stephen P. Bennett, Christian Faulhammer, Ciaran McCreesh, Ulrich Müller},
+    pdfsubject={Defining a feature set for package managers in the Gentoo world},
+    pdfkeywords={Gentoo, package manager, specification},
+}
+
+\CurrentEAPIIs{7}
+\ChangeWhenAddingAnEAPI{7}
+
+\begin{document}
+\maketitle
+
+\thispagestyle{empty}
+\vspace*{\fill}
+{%
+    \small
+    The bulk of this document is \textcopyright{} 2007--2018 Stephen Bennett, Christian Faulhammer,
+    Ciaran McCreesh and Ulrich Müller. Contributions are owned by their respective authors, and may
+    have been changed substantially before inclusion.
+
+    This document is released under the Creative Commons Attribution-ShareAlike 3.0 Licence. The
+    full text of this licence can be found at \url{http://creativecommons.org/licenses/by-sa/3.0/}.
+
+    \commitinfo
+}
+
+\tableofcontents
+\listofalgorithms
+\listoflistings
+\listoftables
+
+\include{introduction}
+
+\include{eapis}
+
+\include{names}
+
+\include{tree-layout}
+
+\include{profiles}
+
+\include{ebuild-format}
+
+\include{ebuild-vars}
+
+\include{dependencies}
+
+\include{ebuild-functions}
+
+\include{eclasses}
+
+\include{ebuild-environment}
+
+\include{commands}
+
+\include{merge}
+
+\include{metadata-cache}
+
+\include{glossary}
+
+\bibliography{pms}
+
+\appendix
+\setcounter{secnumdepth}{0}
+
+\include{appendices}
+
+\include{eapi-differences}
+
+\ifthenelse{\boolean{TEX4HT-HACKS}}{%
+    \chapter{Desk Reference}
+
+    \href{eapi-cheatsheet.pdf}{EAPI Cheat Sheet}
+}{%
+    % Make sure that the cheat sheet starts on an odd page
+    \clearpage\ifthenelse{\isodd{\thepage}}{}{\null\newpage}%
+    \includepdf[pages=-,landscape,turn=false,%
+        addtotoc={1,chapter,0,Desk Reference,cheatsheet}]{eapi-cheatsheet}
+}
+
+\end{document}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

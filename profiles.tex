@@ -1,0 +1,245 @@
+\chapter{Profiles}
+\label{sec:profiles}
+
+\section{General Principles}
+Generally, a profile defines information specific to a certain `type' of system---it lies somewhere
+between repository-level defaults and user configuration in that the information it contains is not
+necessarily applicable to all machines, but is sufficiently general that it should not be left to
+the user to configure it. Some parts of the profile can be overridden by user configuration, some
+only by another profile.
+
+The format of a profile is relatively simple. Each profile is a directory containing any number of
+the files described in this chapter, and possibly inheriting another profile. The files themselves
+follow a few basic conventions as regards inheritance and format; these are described in the next
+section. It may also contain any number of subdirectories containing other profiles.
+
+\section{Files That Make up a Profile}
+
+\subsection{The parent file}
+A profile may contain a \t{parent} file. Each line must contain a relative path to another profile
+which will be considered as one of this profile's parents. Any settings from the parent are
+inherited by this profile, and can be overridden by it. Precise rules for how settings are combined
+with the parent profile vary between files, and are described below. Parents are handled depth
+first, left to right, with duplicate parent paths being sourced for every time they are encountered.
+
+It is illegal for a profile's parent tree to contain cycles. Package manager behaviour upon
+encountering a cycle is undefined.
+
+This file must not contain comments, blank lines or make use of line continuations.
+
+\subsection{The eapi file}
+\label{sec:profile-eapi}
+A profile directory may contain an \t{eapi} file. This file, if it exists, must contain a single
+line with the name of an EAPI\@. This specifies the EAPI to use when handling the directory in
+question; a package manager must not attempt to use any profile using a directory which requires an
+EAPI it does not support. If no \t{eapi} file is present, EAPI 0 shall be used. The EAPI is neither
+inherited via the \t{parent} file nor in subdirectories.
+
+\subsection{deprecated}
+If a profile contains a file named \t{deprecated}, it is treated as such. The first line of this
+file should contain the path from the \t{profiles} directory of the repository to a valid profile
+that is the recommended upgrade path from this profile. The remainder of the file can contain any
+text, which may be displayed to users using this profile by the package manager. This file is not
+inherited---profiles which inherit from a deprecated profile are \e{not} deprecated.
+
+This file must not contain comments or make use of line continuations.
+
+\subsection{make.defaults}
+\t{make.defaults} is used to define defaults for various environment and configuration variables.
+This file is unusual in that it is not combined at a file level with the parent---instead, each
+variable is combined or overridden individually as described in section~\ref{sec:profile-variables}.
+
+The file itself is a line-based key-value format. Each line contains a single \verb|VAR="value"|
+entry, where the value must be double quoted. A variable name must start with one of \t{a-zA-Z}
+and may contain \t{a-zA-Z0-9_} only. Additional syntax, which is a small subset of
+bash syntax, is allowed as follows:
+
+\begin{compactitem}
+\item Variables to the right of the equals sign in the form \t{\$\{foo\}} or \t{\$foo} are recognised and
+  expanded from variables previously set in this or earlier \t{make.defaults} files.
+\item One logical line may be continued over multiple physical lines by escaping the newline with a
+  backslash. A quoted string may be continued over multiple physical lines by either a simple
+  newline or a backslash-escaped newline.
+\item Backslashes, except for line continuations, are not allowed.
+\end{compactitem}
+
+\subsection{Simple line-based files}
+\label{sec:line-stacking}
+These files are a simple one-item-per-line list, which is inherited in the following manner: the
+parent profile's list is taken, and the current profile's list appended. If any line begins with a
+hyphen, then any lines previous to it whose contents are equal to the remainder of that line are
+removed from the list. Once again, blank lines and those beginning with a \# are discarded.
+
+\featurelabel{profile-file-dirs} In EAPIs listed in table~\ref{tab:profile-file-dirs} as supporting
+directories for profile files, any of the files \t{package.mask}, \t{package.use}, \t{use.*} and
+\t{package.use.*} mentioned below can be a directory instead of a regular file. Files contained
+in that directory, unless their name begins with a dot, will be concatenated in order of their
+filename in the POSIX locale and the result will be processed as if it were a single file.
+Any subdirectories will be ignored.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting directories for profile files}
+    \label{tab:profile-file-dirs}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports directories for profile files?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & No  \\
+      7                   & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{packages}
+The \t{packages} file is used to define the `system set' for this profile.
+After the above rules for inheritance and comments are applied, its lines must take one of two
+forms: a package dependency specification prefixed by \t{*} denotes that it forms part of the
+system set. A package dependency specification on its own may also appear for legacy reasons, but
+should be ignored when calculating the system set.
+
+\subsection{packages.build}
+The \t{packages.build} file is used by Gentoo's Catalyst tool to generate stage1 tarballs, and has
+no relevance to the operation of a package manager. It is thus outside the scope of this document,
+but is mentioned here for completeness.
+
+\subsection{package.mask}
+\t{package.mask} is used to prevent packages from being installed on a given profile. Each line
+contains one package dependency specification; anything matching this specification will not be
+installed unless unmasked by the user's configuration. In some EAPIs, \t{package.mask} can be a
+directory instead of a regular file as per section~\ref{sec:line-stacking}.
+
+Note that the \t{-spec} syntax can be used to remove a mask in a parent profile, but not
+necessarily a global mask (from \t{profiles/package.mask}, section~\ref{profiles-package.mask}).
+
+\note{Portage currently treats \t{profiles/package.mask} as being on the leftmost branch of the
+inherit tree when it comes to \t{-lines}. This behaviour may not be relied upon.}
+
+\subsection{package.provided}
+\featurelabel{package-provided} \t{package.provided} is used to tell the package manager that
+a certain package version should be considered to be provided by the system regardless of whether
+it is actually installed. Because it has severe adverse effects on USE-based and slot-based
+dependencies, its use is strongly deprecated and package manager support must be regarded as purely
+optional. Supported in EAPIs as per table~\ref{tab:package-provided}.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{package.provided} in profiles}
+    \label{tab:package-provided}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{package.provided}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & Optionally \\
+      7                   & No         \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{package.use}
+The \t{package.use} file may be used by the package manager to override the default USE flags
+specified by \t{make.defaults} on a per package basis. The format is to have a package dependency
+specification, and then a space delimited list of USE flags to enable. A USE flag in the form of
+\t{-flag} indicates that the package should have the USE flag disabled. The package dependency
+specification is limited to the forms defined by the directory's EAPI\@. In some EAPIs,
+\t{package.use} can be a directory instead of a regular file as per section~\ref{sec:line-stacking}.
+
+\subsection{USE masking and forcing}
+\label{sec:use-masking}
+This section covers the eight files \t{use.mask}, \t{use.force}, \t{use.stable.mask},
+\t{use.stable.force}, \t{package.use.mask}, \t{package.use.force}, \t{package.use.stable.mask},
+and \t{package.use.\allowbreak stable.force}. They are described together because they interact in
+a non-trivial manner. In some EAPIs, these files can be directories instead of regular files as per
+section~\ref{sec:line-stacking}.
+
+Simply speaking, \t{use.mask} and \t{use.force} are used to say that a given USE flag must never or
+always, respectively, be enabled when using this profile. \t{package.use.mask} and
+\t{package.use.force} do the same thing on a per-package, or per-version, basis.
+
+\featurelabel{stablemask}
+In profile directories with an EAPI supporting stable masking, as listed in
+table~\ref{tab:profile-stablemask}, the same is true for \t{use.stable.mask}, \t{use.stable.force},
+\t{package.use.stable.mask} and \t{package.use.\allowbreak stable.force}. These files, however,
+only act on packages that are merged due to a stable keyword in the sense of
+subsection~\ref{sec:keywords}. Thus, these files can be used to restrict the feature set deemed
+stable in a package.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Profile directory support for masking/forcing use flags in stable versions only}
+    \label{tab:profile-stablemask}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports masking/forcing use flags in stable versions?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  \\
+      5, 6, 7           & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+The precise manner in which the eight files interact is less simple, and is best described in terms
+of the algorithm used to determine whether a flag is masked for a given package version. This is
+described in algorithm~\ref{alg:use-masking}.
+\begin{algorithm}
+\caption{\t{USE} masking logic} \label{alg:use-masking}
+\begin{algorithmic}[1]
+\STATE let masked = false
+\FOR{each profile in the inheritance tree, depth first}
+    \IF{\t{use.mask} contains \i{flag}}
+        \STATE let masked = true
+    \ELSIF{\t{use.mask} contains \i{-flag}}
+        \STATE let masked = false
+    \ENDIF
+    \IF{stable keyword in use}
+        \IF{\t{use.stable.mask} contains \i{flag}}
+            \STATE let masked = true
+        \ELSIF{\t{use.stable.mask} contains \i{-flag}}
+            \STATE let masked = false
+        \ENDIF
+    \ENDIF
+    \FOR{each $line$ in package.use.mask, in order, for which the spec matches $package$}
+        \IF{$line$ contains \i{flag}}
+            \STATE let masked = true
+        \ELSIF{$line$ contains \i{-flag}}
+            \STATE let masked = false
+        \ENDIF
+    \ENDFOR
+    \IF{stable keyword in use}
+        \FOR{each $line$ in package.use.stable.mask, in order, for which the spec matches $package$}
+            \IF{$line$ contains \i{flag}}
+                \STATE let masked = true
+            \ELSIF{$line$ contains \i{-flag}}
+                \STATE let masked = false
+            \ENDIF
+        \ENDFOR
+    \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+Stable restrictions (``stable keyword in use'' in algorithm~\ref{alg:use-masking}) are applied
+exactly if replacing in \t{KEYWORDS} all stable keywords by the corresponding tilde prefixed
+keywords (see subsection~\ref{sec:keywords}) would result in the package installation being
+prevented due to the \t{KEYWORDS} setting.
+
+The logic for \t{use.force}, \t{use.stable.force}, \t{package.use.force}, and
+\t{package.use.\allowbreak stable.force} is identical. If a flag is both masked and forced, the
+mask is considered to take precedence.
+
+\t{USE_EXPAND} values may be forced or masked by using \t{expand_name_value}.
+
+A package manager may treat \t{ARCH} values that are not the current architecture as being masked.
+
+\input{profile-variables.tex}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

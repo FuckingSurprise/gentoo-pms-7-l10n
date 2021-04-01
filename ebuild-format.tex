@@ -1,0 +1,43 @@
+\chapter{Ebuild File Format}
+\label{sec:ebuild-format}
+
+\featurelabel{bash-version} The ebuild file format is in its basic form a subset of the format of
+a bash script. The interpreter is assumed to be GNU bash, version as listed in
+table~\ref{tab:bash-version}, or any later version. If possible, the package manager should set
+the shell's compatibility level to the exact version specified. It must ensure that any such
+compatibility settings (e.\,g.\ the \t{BASH_COMPAT} variable) are not exported to external programs.
+
+\featurelabel{failglob} For EAPIs listed such in table~\ref{tab:bash-version}, the \t{failglob}
+option of bash is set in the global scope of ebuilds. If set, failed pattern matches during
+filename expansion result in an error when the ebuild is being sourced.
+
+The file encoding must be UTF-8 with Unix-style newlines. When sourced, the ebuild must define
+certain variables and functions (see sections~\ref{sec:ebuild-vars} and~\ref{sec:ebuild-functions}
+for specific information), and must not call any external programs, write anything to standard
+output or standard error, or modify the state of the system in any way.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Bash version and options}
+    \label{tab:bash-version}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Bash version}} &
+      \multicolumn{1}{c}{\textbf{\t{failglob} in global scope?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5  & 3.2 & No  \\
+      6, 7              & 4.2 & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

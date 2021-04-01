@@ -1,0 +1,1223 @@
+\section{Ebuild-specific Commands}
+\label{sec:pkg-mgr-commands}
+
+The following commands will always be available in the ebuild environment, provided by the package
+manager. Except where otherwise noted, they may be internal (shell functions or aliases) or external
+commands available in \t{PATH}; where this is not specified, ebuilds may not rely upon either
+behaviour.
+
+Unless otherwise noted, any output of these commands ends with a newline.
+
+\subsection{Failure behaviour and related commands}
+\label{sec:failure-behaviour}
+
+\featurelabel{die-on-failure} Where a command is listed as having EAPI dependent failure behaviour,
+a failure shall either result in a non-zero exit status or abort the build process, as determined by
+table~\ref{tab:commands-die-table}.
+
+The following commands affect this behaviour:
+\begin{description}
+\item[nonfatal] \featurelabel{nonfatal} Executes the remainder of its arguments as a command,
+    preserving the exit status. If this results in a command being called that would normally abort
+    the build process due to a failure, instead a non-zero exit status shall be returned. Only in
+    EAPIs listed in table~\ref{tab:commands-die-table} as supporting \t{nonfatal}.
+
+    In EAPIs listed in table~\ref{tab:commands-die-table} as having \t{nonfatal} defined both
+    as a shell function and as an external command, the package manager must provide both
+    implementations to account for calling directly in ebuild scope or through \t{xargs}.
+
+    Explicit \t{die} or \t{assert} commands only respect \t{nonfatal} when called with the \t{-n}
+    option and in EAPIs supporting this option, see table~\ref{tab:die-properties}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPI command failure behaviour}
+    \label{tab:commands-die-table}
+    \begin{tabular}{llll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{P{8em}}{\textbf{Command failure behaviour}} &
+      \multicolumn{1}{P{5em}}{\textbf{Supports \t{nonfatal}?}} &
+      \multicolumn{1}{P{12em}}{\textbf{\t{nonfatal} is both a function and an external command?}} \\
+      \midrule
+      0, 1, 2, 3        & Non-zero exit & No  & n/a \\
+      4, 5, 6           & Aborts        & Yes & No  \\
+      7                 & Aborts        & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Banned commands}
+\label{sec:banned-commands}
+
+\featurelabel{banned-commands} Some commands are banned in some EAPIs. If a banned command is
+called, the package manager must abort the build process indicating an error.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Banned commands}
+    \label{tab:banned-commands-table}
+    \begin{tabular}{lllllll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{6}{c}{\textbf{Command banned?}} \\
+      \multicolumn{1}{c}{} &
+      \multicolumn{1}{c}{\textbf{\t{dohard}}} &
+      \multicolumn{1}{c}{\textbf{\t{dosed}}} &
+      \multicolumn{1}{c}{\textbf{\t{einstall}}} &
+      \multicolumn{1}{c}{\textbf{\t{dohtml}}} &
+      \multicolumn{1}{c}{\textbf{\t{dolib}}} &
+      \multicolumn{1}{c}{\textbf{\t{libopts}}} \\
+      \midrule
+      0, 1, 2, 3        & No  & No  & No  & No  & No  & No  \\
+      4, 5              & Yes & Yes & No  & No  & No  & No  \\
+      6                 & Yes & Yes & Yes & No  & No  & No  \\
+      7                 & Yes & Yes & Yes & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Sandbox commands}
+These commands affect the behaviour of the sandbox. Each command takes a single directory as
+argument. Ebuilds must not run any of these commands once the current phase function has returned.
+\begin{description}
+\item[addread] Add a directory to the permitted read list.
+\item[addwrite] Add a directory to the permitted write list.
+\item[addpredict] Add a directory to the predict list. Any write to a location in this list will be
+    denied, but will not trigger access violation messages or abort the build process.
+\item[adddeny] Add a directory to the deny list.
+\end{description}
+
+\subsection{Package manager query commands}
+These commands are used to extract information about the system. Ebuilds must not run any of
+these commands in parallel with any other package manager command. Ebuilds must not run any of
+these commands once the current phase function has returned.
+
+\featurelabel{pm-query-options} In EAPIs listed in table~\ref{tab:pm-query-options} as supporting
+option \t{-{}-host-root}, this flag as the first argument will cause the query to apply to the
+host root. Otherwise, it applies to \t{ROOT}.
+
+In EAPIs listed in table~\ref{tab:pm-query-options} as supporting options \t{-b}, \t{-d} and \t{-r},
+these mutually exclusive flags as the first argument will cause the query to apply to locations
+targetted by \t{BDEPEND}, \t{DEPEND} and \t{RDEPEND}, respectively. When none of these options
+are given, \t{-r} is assumed.
+
+\begin{description}
+\item[has_version] Takes exactly one package dependency specification as an argument. Returns
+    true if a package matching the specification is installed, and false otherwise.
+\item[best_version] Takes exactly one package dependency specification as an argument. If a
+    matching package is installed, prints the category, package name and version of the highest
+    matching version; otherwise, prints an empty string. The exit code is unspecified.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Package manager query command options supported by EAPIs}
+    \label{tab:pm-query-options}
+    \begin{tabular}{lllll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{-{}-host-root}?}} &
+      \multicolumn{1}{c}{\textbf{\t{-b}?}} &
+      \multicolumn{1}{c}{\textbf{\t{-d}?}} &
+      \multicolumn{1}{c}{\textbf{\t{-r}?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  & No  & No  & No  \\
+      5, 6              & Yes & No  & No  & No  \\
+      7                 & No  & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Output commands}
+These commands display messages to the user. Unless otherwise stated, the entire argument list is
+used as a message, with backslash-escaped characters interpreted as for the \t{echo -e} command of
+bash, notably \t{\textbackslash t} for a horizontal tab, \t{\textbackslash n} for a new line, and
+\t{\textbackslash\textbackslash} for a literal backslash. Ebuilds must not run any of these commands
+once the current phase function has returned.
+
+\featurelabel{output-no-stdout} Unless otherwise noted, output may be sent to stderr or some other
+appropriate facility. In EAPIs listed in table~\ref{tab:output-commands} as not allowing stdout
+output, using stdout as an output facility is forbidden.
+
+\begin{description}
+\item[einfo] Displays an informational message.
+\item[einfon] Displays an informational message without a trailing newline.
+\item[elog] Displays an informational message of slightly higher importance. The package
+    manager may choose to log \t{elog} messages by default where \t{einfo} messages are not, for
+    example.
+\item[ewarn] Displays a warning message. Must not go to stdout.
+\item[eqawarn] \featurelabel{eqawarn} Display a QA warning message intended for ebuild developers.
+    The package manager may provide appropriate mechanisms to skip those messages for normal users.
+    Must not go to stdout. Only available in EAPIs listed in table~\ref{tab:output-commands} as
+    supporting \t{eqawarn}.
+\item[eerror] Displays an error message. Must not go to stdout.
+\item[ebegin] Displays an informational message. Should be used when beginning a possibly
+    lengthy process, and followed by a call to \t{eend}.
+\item[eend] Indicates that the process begun with an \t{ebegin} message has completed. Takes one
+    fixed argument, which is a numeric return code, and an optional message in all subsequent
+    arguments. If the first argument is 0, prints a success indicator; otherwise, prints the
+    message followed by a failure indicator. Returns its first argument as exit status.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Output commands for EAPIs}
+    \label{tab:output-commands}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Commands can output to stdout?}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{eqawarn}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & Yes & No  \\
+      7                   & No  & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Error commands}
+These commands are used when an error is detected that will prevent the build process from
+completing. Ebuilds must not run any of these commands once the current phase function has returned.
+\begin{description}
+\item[die] \featurelabel{nonfatal-die} If called under the \t{nonfatal} command (as per
+    section~\ref{sec:failure-behaviour}) and with \t{-n} as its first parameter, displays a failure
+    message provided in its following argument and then returns a non-zero exit status. Only in
+    EAPIs listed in table~\ref{tab:die-properties} as supporting option~\t{-n}. Otherwise, displays
+    a failure message provided in its first and only argument, and then aborts the build process.
+
+    \featurelabel{subshell-die} In EAPIs listed in table~\ref{tab:die-properties} as not providing
+    subshell support, \t{die} is \e{not} guaranteed to work correctly if called from a subshell
+    environment.
+\item[assert] Checks the value of the shell's pipe status variable, and if any component is non-zero
+    (indicating failure), calls \t{die}, passing any parameters to it.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Properties of \t{die} and \t{assert} commands in EAPIs}
+    \label{tab:die-properties}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{2}{c}{\textbf{\t{die} and \t{assert}}} \\
+      &
+      \multicolumn{1}{c}{\textbf{support \t{-n}?}} &
+      \multicolumn{1}{c}{\textbf{work in subshell?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5  & No  & No  \\
+      6                 & Yes & No  \\
+      7                 & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Patch commands}
+These commands are used during the \t{src_prepare} phase to apply patches to the package's sources.
+Ebuilds must not run any of these commands once the current phase function has returned.
+
+\begin{description}
+\item[eapply] \featurelabel{eapply} Takes zero or more GNU patch options, followed by one or more
+    file or directory paths. Processes options and applies all patches found in specified locations
+    according to algorithm~\ref{alg:eapply}. If applying the patches fails, it aborts the build
+    using \t{die}, unless run using \t{nonfatal}, in which case it returns non-zero exit status.
+    Only available in EAPIs listed in table~\ref{tab:patch-commands} as supporting \t{eapply}.
+
+\begin{algorithm}
+\caption{\t{eapply} logic} \label{alg:eapply}
+\begin{algorithmic}[1]
+\IF{any parameter is equal to \t{"-{}-"}}
+    \STATE collect all parameters before the first \t{"-{}-"} in the \t{options} array
+    \STATE collect all parameters after the first \t{"-{}-"} in the \t{files} array
+\ELSIF{any parameter that begins with a hyphen follows one that does not}
+    \STATE abort the build process with an error
+\ELSE
+    \STATE collect all parameters beginning with a hyphen in the \t{options} array
+    \STATE collect all remaining parameters in the \t{files} array
+\ENDIF
+\IF{the \t{files} array is empty}
+    \STATE abort the build process with an error
+\ENDIF
+\FORALL{\t{x} in the \t{files} array}
+    \IF{\t{\$x} is a directory}
+        \IF{\NOT any files match \t{\$x/*.diff} or \t{\$x/*.patch}}
+            \STATE abort the build process with an error
+        \ENDIF
+        \FORALL{files \t{f} matching \t{\$x/*.diff} or \t{\$x/*.patch}, sorted in POSIX locale}
+            \STATE call \t{patch -p1 -f -g0 -{}-no-backup-if-mismatch "\$\{options[@]\}" < "\$f"}
+            \IF{child process returned with non-zero exit status}
+                \RETURN immediately with that status
+            \ENDIF
+        \ENDFOR
+    \ELSE
+        \STATE call \t{patch -p1 -f -g0 -{}-no-backup-if-mismatch "\$\{options[@]\}" < "\$x"}
+        \IF{child process returned with non-zero exit status}
+            \RETURN immediately with that status
+        \ENDIF
+    \ENDIF
+\ENDFOR
+\RETURN shell true (0)
+\end{algorithmic}
+\end{algorithm}
+
+\item[eapply_user] \featurelabel{eapply-user} Takes no arguments. Package managers supporting it
+    apply user-provided patches to the source tree in the current working directory. Exact behaviour
+    is implementation defined and beyond the scope of this specification. Package managers not
+    supporting it must implement the command as a no-op. Returns shell true (0) if patches applied
+    successfully, or if no patches were provided. Otherwise, aborts the build process, unless run
+    using \t{nonfatal}, in which case it returns non-zero exit status. Only available in EAPIs
+    listed in table~\ref{tab:patch-commands} as supporting \t{eapply_user}. In EAPIs where it is
+    supported, \t{eapply_user} must be called once in the \t{src_prepare} phase. For any
+    subsequent calls, the command will do nothing and return~0.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Patch commands for EAPIs}
+    \label{tab:patch-commands}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{eapply}?}} &
+      \multicolumn{1}{c}{\textbf{\t{eapply_user}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5  & No  & No  \\
+      6, 7              & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Build commands}
+These commands are used during the \t{src_configure}, \t{src_compile}, and \t{src_install}
+phases to run the package's build commands. Ebuilds must not run any of these commands once the
+current phase function has returned.
+
+\begin{description}
+\item[econf] Calls the program's \t{./configure} script. This is designed to work with GNU
+    Autoconf-generated scripts. Any additional parameters passed to \t{econf} are passed directly
+    to \t{./configure}, after the default options below. \t{econf} will look in the current working
+    directory for a configure script unless the \t{ECONF_SOURCE} environment variable is set,
+    in which case it is taken to be the directory containing it.
+
+    \featurelabel{econf-options} \t{econf} must pass the following options to the configure script:
+    \begin{itemize}
+    \item \t{-{}-prefix} must default to \t{\$\{EPREFIX\}/usr} unless overridden by \t{econf}'s
+        caller.
+    \item \t{-{}-mandir} must be \t{\$\{EPREFIX\}/usr/share/man}
+    \item \t{-{}-infodir} must be \t{\$\{EPREFIX\}/usr/share/info}
+    \item \t{-{}-datadir} must be \t{\$\{EPREFIX\}/usr/share}
+    \item \t{-{}-sysconfdir} must be \t{\$\{EPREFIX\}/etc}
+    \item \t{-{}-localstatedir} must be \t{\$\{EPREFIX\}/var/lib}
+    \item \t{-{}-docdir} must be \t{\$\{EPREFIX\}/usr/share/doc/\$\{PF\}}, if the EAPI is listed in
+        table~\ref{tab:econf-options-table} as using it. This option will only be passed if the
+        string \t{-{}-docdir} occurs in the output of \t{configure -{}-help}.
+    \item \t{-{}-htmldir} must be \t{\$\{EPREFIX\}/usr/share/doc/\$\{PF\}/html}, if the EAPI is
+        listed in table~\ref{tab:econf-options-table} as using it. This option will only be passed
+        if the string \t{-{}-htmldir} occurs in the output of \t{configure -{}-help}.
+    \item \t{-{}-with-sysroot} must be \t{\$\{ESYSROOT\}}, if the EAPI is listed in
+        table~\ref{tab:econf-options-table} as using it. This option will only be passed if the
+        string \t{-{}-with-sysroot} occurs in the output of \t{configure -{}-help}.
+    \item \t{-{}-build} must be the value of the \t{CBUILD} environment variable. This option will
+        only be passed if \t{CBUILD} is non-empty.
+    \item \t{-{}-host} must be the value of the \t{CHOST} environment variable.
+    \item \t{-{}-target} must be the value of the \t{CTARGET} environment variable. This option will
+        only be passed if \t{CTARGET} is non-empty.
+    \item \t{-{}-libdir} must be set according to algorithm~\ref{alg:econf-libdir}.
+    \item \t{-{}-disable-dependency-tracking}, if the EAPI is listed in
+        table~\ref{tab:econf-options-table} as using it. This option will only be passed if the
+        string \t{-{}-disable-dependency-tracking} occurs in the output of \t{configure -{}-help}.
+    \item \t{-{}-disable-silent-rules}, if the EAPI is listed in table~\ref{tab:econf-options-table}
+        as using it. This option will only be passed if the string \t{-{}-disable-silent-rules}
+        occurs in the output of \t{configure -{}-help}.
+    \end{itemize}
+
+    \ChangeWhenAddingAnEAPI{7}
+    \begin{centertable}{Extra \t{econf} arguments for EAPIs}
+        \label{tab:econf-options-table}
+        \begin{tabular}{llllll}
+          \toprule
+          \multicolumn{1}{c}{\textbf{EAPI}} &
+          \multicolumn{1}{P{9em}}{\textbf{-{}-disable-dependency-tracking}} &
+          \multicolumn{1}{P{5em}}{\textbf{-{}-disable-silent-rules}} &
+          \multicolumn{1}{c}{\textbf{-{}-docdir}} &
+          \multicolumn{1}{c}{\textbf{-{}-htmldir}} &
+          \multicolumn{1}{c}{\textbf{-{}-with-sysroot}} \\
+          \midrule
+          0, 1, 2, 3        & No  & No  & No  & No  & No  \\
+          4                 & Yes & No  & No  & No  & No  \\
+          5                 & Yes & Yes & No  & No  & No  \\
+          6                 & Yes & Yes & Yes & Yes & No  \\
+          7                 & Yes & Yes & Yes & Yes & Yes \\
+          \bottomrule
+        \end{tabular}
+    \end{centertable}
+
+    Note that the \t{\$\{EPREFIX\}} component represents the same offset-prefix as described in
+    table~\ref{tab:defined-vars}. It facilitates offset-prefix installations which is supported by
+    EAPIs listed in table~\ref{tab:offset-env-vars-table}. When no offset-prefix installation is in
+    effect, \t{EPREFIX} becomes the empty string, making the behaviour of \t{econf} equal for both
+    offset-prefix supporting and agnostic EAPIs.
+
+    \t{econf} must be implemented internally---that is, as a bash function and not an external
+    script. Should any portion of it fail, it must abort the build using \t{die}, unless run using
+    \t{nonfatal}, in which case it must return non-zero exit status.
+
+\begin{algorithm}
+\caption{\t{econf -{}-libdir} logic} \label{alg:econf-libdir}
+\begin{algorithmic}[1]
+\STATE let prefix=\$\{EPREFIX\}/usr
+\IF{the caller specified -{}-prefix=\$p}
+    \STATE let prefix=\$p
+\ENDIF
+\STATE let libdir=
+\IF{the ABI environment variable is set}
+    \STATE let libvar=LIBDIR_\$ABI
+    \IF{the environment variable named by libvar is set}
+        \STATE let libdir=the value of the variable named by libvar
+    \ENDIF
+\ENDIF
+\IF{libdir is non-empty}
+    \STATE pass -{}-libdir=\$prefix/\$libdir to configure
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\item[emake] Calls the \t{\$MAKE} program, or GNU make if the \t{MAKE} variable is unset.
+    Any arguments given are passed directly to the make command, as are the user's chosen
+    \t{MAKEOPTS}\@. Arguments given to \t{emake} override user configuration. See also
+    section~\ref{sec:guaranteed-system-commands}. \t{emake} must be an external program and cannot
+    be a function or alias---it must be callable from e.\,g.\ \t{xargs}. Failure behaviour is EAPI
+    dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[einstall] A shortcut for the command given in listing~\ref{lst:einstall}. Any arguments given
+    to \t{einstall} are passed verbatim to \t{emake}, as shown. Failure behaviour is EAPI dependent
+    as per section~\ref{sec:failure-behaviour}.
+    In EAPIs listed in table~\ref{tab:banned-commands-table}, this command is banned as per
+    section~\ref{sec:banned-commands}.
+
+    The variable \t{ED} is defined as in table~\ref{tab:defined-vars} and depends on the use of an
+    offset-prefix. When such offset-prefix is absent, \t{ED} is equivalent to \t{D}\@. \t{ED} is
+    always available in EAPIs that support offset-prefix installations as listed in
+    table~\ref{tab:offset-env-vars-table}, hence EAPIs lacking offset-prefix support should use
+    \t{D} instead of \t{ED} in the command given in listing~\ref{lst:einstall}.
+    Variable \t{libdir} is an auxiliary local variable whose value is determined by
+    algorithm~\ref{alg:ebuild-libdir}.
+
+\begin{listing}[H]
+\caption{\t{einstall} command} \label{lst:einstall}
+\begin{verbatim}
+emake \
+   prefix="${ED}"/usr \
+   datadir="${ED}"/usr/share \
+   mandir="${ED}"/usr/share/man \
+   infodir="${ED}"/usr/share/info \
+   libdir="${ED}"/usr/${libdir} \
+   localstatedir="${ED}"/var/lib \
+   sysconfdir="${ED}"/etc \
+   -j1 \
+   "$@" \
+   install
+\end{verbatim}
+\end{listing}
+
+\end{description}
+
+\subsection{Installation commands}
+These commands are used to install files into the staging area, in cases where the package's \t{make
+install} target cannot be used or does not install all needed files. Except where otherwise stated,
+all filenames created or modified are relative to the staging directory including the offset-prefix
+\t{ED} in offset-prefix aware EAPIs, or just the staging directory \t{D} in offset-prefix agnostic
+EAPIs. Existing destination files are overwritten. These commands must all be external programs and
+not bash functions or aliases---that is, they must be callable from \t{xargs}. Calling any of these
+commands without a filename parameter is an error. Ebuilds must not run any of these commands once
+the current phase function has returned.
+
+\begin{description}
+\item[dobin] Installs the given files into \t{DESTTREE/bin}, where
+    \t{DESTTREE} defaults to \t{/usr}. Gives the files mode \t{0755}
+    and transfers file ownership to the superuser or its equivalent on
+    the system or installation at hand. For instance on Gentoo Linux in
+    a non-offset-prefix installation this ownership is \t{root:root},
+    while on an offset-prefix aware installation this may be
+    \t{joe:users}. Failure behaviour is EAPI dependent as per
+    section~\ref{sec:failure-behaviour}.
+
+\item[doconfd] Installs the given config files into \t{/etc/conf.d/}, by default with file mode
+    \t{0644}, or with the \t{install} options set by the most recent \t{insopts} call.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[dodir] Creates the given directories, by default with file mode \t{0755}, or with the
+    \t{install} options set by the most recent \t{diropts} call. Failure behaviour is EAPI
+    dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[dodoc] \featurelabel{dodoc} Installs the given files into a subdirectory under
+    \t{/usr/share/doc/\$\{PF\}/} with file mode \t{0644}. The subdirectory is set by the most recent
+    call to \t{docinto}. If \t{docinto} has not yet been called, instead installs to the directory
+    \t{/usr/share/doc/\$\{PF\}/}. For EAPIs listed in table~\ref{tab:dodoc-table} as supporting \t{-r},
+    if the first argument is \t{-r}, any subsequent arguments that are directories are installed
+    recursively to the appropriate location; in any other case, it is an error for a directory to be
+    specified. Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[doenvd] Installs the given environment files into \t{/etc/env.d/}, by default with file mode
+    \t{0644}, or with the \t{install} options set by the most recent \t{insopts} call.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[doexe] Installs the given files into the directory specified by the most recent \t{exeinto}
+    call. If \t{exeinto} has not yet been called, behaviour is undefined. Files are installed by
+    default with file mode \t{0755}, or with the \t{install} options set by the most recent
+    \t{exeopts} call.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[dohard] Takes two parameters. Creates a hardlink from the second to the first. Both paths are
+    relative to the staging directory including the offset-prefix \t{ED} in offset-prefix aware
+    EAPIs, or just the staging directory \t{D} in offset-prefix agnostic EAPIs. In EAPIs listed
+    in table~\ref{tab:banned-commands-table}, this command is banned as per
+    section~\ref{sec:banned-commands}.
+
+\item[doheader] \featurelabel{doheader} Installs the given header files into \t{/usr/include/},
+    by default with file mode \t{0644}, or with the \t{install} options set by the most recent
+    \t{insopts} call. If the first argument is \t{-r}, then operates recursively, descending
+    into any directories given.
+    Only available in EAPIs listed in table~\ref{tab:doheader-table} as supporting \t{doheader}.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[dohtml] Installs the given HTML files into a subdirectory under \t{/usr/share/doc/\$PF/}.
+    The subdirectory is \t{html} by default, but this can be overridden with the \t{docinto}
+    function. Files to be installed automatically are determined by extension and the default
+    extensions are \t{css}, \t{gif}, \t{htm}, \t{html}, \t{jpeg}, \t{jpg}, \t{js} and \t{png}.
+    These default extensions can be extended or reduced (see below). The options that can be passed
+    to \t{dohtml} are as follows:
+    \begin{compactdesc}
+    \item[\t{-r}] enables recursion into directories.
+    \item[\t{-V}] enables verbosity.
+    \item[\t{-A}] adds file type extensions to the default list.
+    \item[\t{-a}] sets file type extensions to only those specified.
+    \item[\t{-f}] list of files that are able to be installed.
+    \item[\t{-x}] list of directories that files will not be installed from (only used in
+        conjunction with \t{-r}).
+    \item[\t{-p}] sets a document prefix for installed files, not to be confused with the global
+        offset-prefix.
+    \end{compactdesc}
+
+    In EAPIs listed in table~\ref{tab:banned-commands-table}, this command is banned as per
+    section~\ref{sec:banned-commands}.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+    It is undefined whether a failure shall occur if \t{-r} is not specified and a directory is
+    encountered. Ebuilds must not rely upon any particular behaviour.
+
+\item[doinfo] Installs the given GNU Info files into the \t{/usr/share/info} area with file mode
+    \t{0644}. Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[doinitd] Installs the given initscript files into \t{/etc/init.d}, by default with file mode
+    \t{0755}, or with the \t{install} options set by the most recent \t{exeopts} call.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[doins] \featurelabel{doins} Takes one or more files as arguments and installs them into
+    \t{INSDESTTREE}, by default with file mode \t{0644}, or with the \t{install} options set by
+    the most recent \t{insopts} call. If the first argument is \t{-r}, then operates recursively,
+    descending into any directories given. For EAPIs listed in table~\ref{tab:doins-table},
+    \t{doins} must install symlinks as symlinks; for other EAPIs, behaviour is undefined if any
+    symlink is encountered. Failure behaviour is EAPI dependent as per
+    section~\ref{sec:failure-behaviour}.
+
+\item[dolib.a] For each argument, installs it into the appropriate library subdirectory under
+    \t{DESTTREE}, as determined by algorithm~\ref{alg:ebuild-libdir}. Files are installed with file
+    mode \t{0644}. Any symlinks are installed into the same directory as relative links to their
+    original target. Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[dolib.so] As for \t{dolib.a} except each file is installed with mode \t{0755}.
+
+\item[dolib] As for \t{dolib.a} except that the default install mode can be overriden with
+    the \t{install} options set by the most recent \t{libopts} call. In EAPIs listed
+    in table~\ref{tab:banned-commands-table}, this command is banned as per
+    section~\ref{sec:banned-commands}.
+
+\begin{algorithm}
+\caption{Determining the library directory} \label{alg:ebuild-libdir}
+\begin{algorithmic}[1]
+\IF{CONF_LIBDIR_OVERRIDE is set in the environment}
+    \STATE return CONF_LIBDIR_OVERRIDE
+\ENDIF
+\IF{CONF_LIBDIR is set in the environment}
+    \STATE let LIBDIR_default=CONF_LIBDIR
+\ELSE
+    \STATE let LIBDIR_default=``lib''
+\ENDIF
+\IF{ABI is set in the environment}
+    \STATE let abi=ABI
+\ELSIF{DEFAULT_ABI is set in the environment}
+    \STATE let abi=DEFAULT_ABI
+\ELSE
+    \STATE let abi=``default''
+\ENDIF
+\STATE return the value of LIBDIR_\$abi
+\end{algorithmic}
+\end{algorithm}
+
+\item[doman] Installs the given man pages into the appropriate subdirectory of \t{/usr/share/man}
+    depending upon its apparent section suffix (e.\,g.\ \t{foo.1} goes to
+    \t{/usr/share/man/man1/foo.1}) with file mode \t{0644}.
+
+    \featurelabel{doman-langs} In EAPIs listed in table~\ref{tab:doman-table} as supporting
+    language detection by filename, a man page with name of the form \t{foo.}\i{lang}\t{.1} shall
+    go to \t{/usr/share/man/}\i{lang}\t{/man1/foo.1}, where \i{lang} refers to a pair of lower-case
+    ASCII letters optionally followed by an underscore and a pair of upper-case ASCII letters.
+    Failure behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+    With option \t{-i18n=}\i{lang}, a man page shall be installed into an appropriate subdirectory
+    of \t{/usr/share/man/}\i{lang} (e.\,g.\ \t{/usr/share/man/}\i{lang}\t{/man1/foo.pl.1} would be
+    the destination for \t{foo.pl.1}). The \i{lang} subdirectory level is skipped if \i{lang} is
+    the empty string. In EAPIs specified by table~\ref{tab:doman-table}, the \t{-i18n} option takes
+    precedence over the language code in the filename.
+
+\item[domo] \featurelabel{domo-path} Installs the given \t{.mo} files with file mode \t{0644} into
+    the appropriate subdirectory of the locale tree, generated by taking the basename of the file,
+    removing the \t{.*} suffix, and appending \t{/LC_MESSAGES}\@. The name of the installed files
+    is the package name with \t{.mo} appended. Failure behaviour is EAPI dependent as per
+    section~\ref{sec:failure-behaviour}. The locale tree location is EAPI dependent as per
+    table~\ref{tab:domo-path}.
+
+\item[dosbin] As \t{dobin}, but installs to \t{DESTTREE/sbin}.
+
+\item[dosym] Creates a symbolic link named as for its second parameter, pointing to the first. If
+    the directory containing the new link does not exist, creates it. Failure behaviour is EAPI
+    dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[fowners] Acts as for \t{chown}, but takes paths relative to the image directory. Failure
+    behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[fperms] Acts as for \t{chmod}, but takes paths relative to the image directory. Failure
+    behaviour is EAPI dependent as per section~\ref{sec:failure-behaviour}.
+
+\item[keepdir] For each argument, creates a directory as for \t{dodir}, and an empty file whose
+    name starts with \t{.keep} in that directory to ensure that the directory does not get removed
+    by the package manager should it be empty at any point. Failure behaviour is EAPI dependent
+    as per section~\ref{sec:failure-behaviour}.
+
+\item[newbin] \featurelabel{newfoo-stdin} As for \t{dobin}, but takes two parameters. The first is
+    the file to install; the second is the new filename under which it will be installed. In EAPIs
+    specified by table~\ref{tab:newfoo-stdin-table}, standard input is read when the first
+    parameter is \t{-} (a hyphen). In this case, it is an error if standard input is a terminal.
+
+\item[newconfd] As for \t{doconfd}, but takes two parameters as for \t{newbin}.
+
+\item[newdoc] As above, for \t{dodoc}.
+
+\item[newenvd] As above, for \t{doenvd}.
+
+\item[newexe] As above, for \t{doexe}.
+
+\item[newheader] As above, for \t{doheader}.
+
+\item[newinitd] As above, for \t{doinitd}.
+
+\item[newins] As above, for \t{doins}.
+
+\item[newlib.a] As above, for \t{dolib.a}.
+
+\item[newlib.so] As above, for \t{dolib.so}.
+
+\item[newman] As above, for \t{doman}.
+
+\item[newsbin] As above, for \t{dosbin}.
+
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{dodoc -r}}
+    \label{tab:dodoc-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{dodoc -r}?}} \\
+      \midrule
+      0, 1, 2, 3        & No  \\
+      4, 5, 6, 7        & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{doheader} and \t{newheader}}
+    \label{tab:doheader-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{doheader} and \t{newheader}?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  \\
+      5, 6, 7           & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting symlinks for \t{doins}}
+    \label{tab:doins-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{doins} supports symlinks?}} \\
+      \midrule
+      0, 1, 2, 3        & No  \\
+      4, 5, 6, 7        & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{\t{doman} language support options for EAPIs}
+    \label{tab:doman-table}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Language detection by filename?}} &
+      \multicolumn{1}{c}{\textbf{Option \t{-i18n} takes precedence?}} \\
+      \midrule
+      0, 1              & No  & Not applicable \\
+      2, 3              & Yes & No             \\
+      4, 5, 6, 7        & Yes & Yes            \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting stdin for \t{new*} commands}
+    \label{tab:newfoo-stdin-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{new*} can read from stdin?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  \\
+      5, 6, 7           & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{\t{domo} destination path in EAPIs}
+    \label{tab:domo-path}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Destination path}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & \t{\$\{DESTTREE\}/share/locale} \\
+      7                   & \t{/usr/share/locale} \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Commands affecting install destinations}
+The following commands are used to set the various destination trees, all relative to \t{\$\{ED\}} in
+offset-prefix aware EAPIs and relative to \t{\$\{D\}} in offset-prefix agnostic EAPIs, used by the
+above installation commands. They must be shell functions or aliases, due to the need to set variables
+read by the above commands. Ebuilds must not run any of these commands once the current phase function
+has returned.
+
+\begin{description}
+
+\item[into] Sets the value of \t{DESTTREE} for future invocations
+    of the above utilities. Creates the directory under \t{\$\{ED\}}
+    in offset-prefix aware EAPIs or under \t{\$\{D\}} in offset-prefix
+    agnostic EAPIs, using \t{install -d} with no additional options,
+    if it does not already exist. Failure behaviour is EAPI dependent
+    as per section~\ref{sec:failure-behaviour}.
+
+\item[insinto] Sets the value of \t{INSDESTTREE} for future invocations of the above utilities. May
+    create the directory, as specified for \t{into}.
+
+\item[exeinto] Sets the install path for \t{doexe} and \t{newexe}. May create the directory, as specified
+    for \t{into}.
+
+\item[docinto] Sets the install subdirectory for \t{dodoc} et al. May create the directory, as specified
+    for \t{into}.
+
+\item[insopts] Sets the options passed by \t{doins} et al.\ to the \t{install} command.
+
+\item[diropts] Sets the options passed by \t{dodir} et al.\ to the \t{install} command.
+
+\item[exeopts] Sets the options passed by \t{doexe} et al.\ to the \t{install} command.
+
+\item[libopts] Sets the options passed by \t{dolib} et al.\ to the \t{install} command.
+    In EAPIs listed in table~\ref{tab:banned-commands-table}, this command is banned as
+    per section~\ref{sec:banned-commands}.
+
+\end{description}
+
+\subsection{Commands controlling manipulation of files in the staging area}
+These commands are used to control optional manipulations that the package manager may perform on
+files in the staging directory \t{ED}, like compressing files or stripping symbols from object
+files.
+
+For each of the operations mentioned below, the package manager shall maintain an inclusion list
+and an exclusion list, in order to control which directories and files the operation may or may not
+be performed upon. The initial contents of the two lists is specified below for each of the
+commands, respectively.
+
+Any of these operations shall be carried out after \t{src_install} has completed, and before the
+execution of any subsequent phase function. For each item in the inclusion list, pretend it has
+the value of the \t{ED} variable prepended, then:
+
+\begin{compactitem}
+\item If it is a directory, act as if every file or directory immediately under this directory
+    were in the inclusion list.
+\item If the item is a file, the operation may be performed on it, unless it has been excluded as
+    described below.
+\item If the item does not exist, it is ignored.
+\end{compactitem}
+
+Whether an item is to be excluded is determined as follows: For each item in the exclusion list,
+pretend it has the value of the \t{ED} variable prepended, then:
+
+\begin{compactitem}
+\item If it is a directory, act as if every file or directory immediately under this directory
+    were in the exclusion list.
+\item If the item is a file, the operation shall not be performed on it.
+\item If the item does not exist, it is ignored.
+\end{compactitem}
+
+The package manager shall take appropriate steps to ensure that any operations that it performs on
+files in the staging area behave sensibly even if an item is listed in the inclusion list multiple
+times or if an item is a symlink.
+
+\featurelabel{docompress} In EAPIs listed in table~\ref{tab:staging-area-commands} as supporting
+controllable compression, the package manager may optionally compress a subset of the files under
+the \t{ED} directory. The package manager shall ensure that its compression mechanisms behave
+sensibly even if a file is already compressed. For compression, the initial values of the two lists
+are as follows:
+
+\begin{compactitem}
+\item The inclusion list contains \t{/usr/share/doc}, \t{/usr/share/info} and \t{/usr/share/man}.
+\item The exclusion list contains \t{/usr/share/doc/\$\{PF\}/html}.
+\end{compactitem}
+
+\featurelabel{dostrip} In EAPIs listed in table~\ref{tab:staging-area-commands} as supporting
+controllable stripping of symbols, the package manager may strip a subset of the files under the
+\t{ED} directory. For stripping of symbols, the initial values of the two lists are as follows:
+
+\begin{compactitem}
+\item If the \t{RESTRICT} variable described in section~\ref{sec:restrict} enables a \t{strip}
+    token, the inclusion list is empty; otherwise it contains \t{/} (the root path).
+\item The exclusion list is empty.
+\end{compactitem}
+
+The following commands may be used in \t{src_install} to alter these lists. It is an error to call
+any of these functions from any other phase.
+
+\begin{description}
+\item[docompress] If the first argument is \t{-x}, add each of its subsequent arguments to the
+    exclusion list for compression. Otherwise, add each argument to the respective inclusion list.
+    Only available in EAPIs listed in table~\ref{tab:staging-area-commands} as supporting
+    \t{docompress}.
+
+\item[dostrip] If the first argument is \t{-x}, add each of its subsequent arguments to the
+    exclusion list for stripping of symbols. Otherwise, add each argument to the respective
+    inclusion list. Only available in EAPIs listed in table~\ref{tab:staging-area-commands} as
+    supporting \t{dostrip}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Commands controlling manipulation of files in the staging area in EAPIs}
+    \label{tab:staging-area-commands}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{P{13.5em}}{\textbf{Supports controllable compression and \t{docompress}?}} &
+      \multicolumn{1}{P{10.5em}}{\textbf{Supports controllable stripping and \t{dostrip}?}} \\
+      \midrule
+      0, 1, 2, 3        & No  & No  \\
+      4, 5, 6           & Yes & No  \\
+      7                 & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{USE list functions}
+These functions provide behaviour based upon set or unset use flags. Ebuilds must not run any of
+these commands once the current phase function has returned. It is an error if an ebuild calls any
+of these functions in global scope.
+
+Unless otherwise noted, if any of these functions is called with a flag value that is not included
+in \t{IUSE_EFFECTIVE}, either behaviour is undefined or it is an error as decided by
+table~\ref{tab:use-list-strictness}.
+
+\begin{description}
+\item[use] Returns shell true (0) if the first argument (a \t{USE} flag name) is enabled, false
+    otherwise.  If the flag name is prefixed with \t{!}, returns true if the flag is disabled, and
+    false if it is enabled. It is guaranteed that this command is quiet.
+\item[usev] The same as \t{use}, but also prints the flag name if the condition
+    is met.
+\item[useq] Deprecated synonym for \t{use}.
+\item[use_with] \featurelabel{use-with} Has one-, two-, and three-argument forms. The first
+    argument is a USE flag name, the second a \t{configure} option name (\t{\$\{opt\}}), defaulting
+    to the same as the first argument if not provided, and the third is a string value
+    (\t{\$\{value\}}). For EAPIs listed in table~\ref{tab:use-with-third-arg} as not supporting it,
+    an empty third argument is treated as if it weren't provided. If the USE flag is set, outputs
+    \t{-{}-with-\$\{opt\}=\$\{value\}} if the third argument was provided, and
+    \t{-{}-with-\$\{opt\}} otherwise. If the flag is not set, then it outputs
+    \t{-{}-without-\$\{opt\}}.
+\item[use_enable] Works the same as \t{use_with()}, but outputs \t{-{}-enable-} or
+    \t{-{}-disable-} instead of \t{-{}-with-} or \t{-{}-without-}.
+\item[usex] \featurelabel{usex} Accepts at least one and at most five arguments. The first argument
+    is a USE flag name, any subsequent arguments (\t{\$\{arg2\}} to \t{\$\{arg5\}}) are string
+    values. If not provided, \t{\$\{arg2\}} and \t{\$\{arg3\}} default to \t{yes} and \t{no},
+    respectively; \t{\$\{arg4\}} and \t{\$\{arg5\}} default to the empty string. If the USE flag is
+    set, outputs \t{\$\{arg2\}\$\{arg4\}}. Otherwise, outputs \t{\$\{arg3\}\$\{arg5\}}.
+    The condition is inverted if the flag name is prefixed with~\t{!}.
+    Only available in EAPIs listed in table~\ref{tab:use-list-functions} as supporting \t{usex}.
+\item[in_iuse] \featurelabel{in-iuse} Returns shell true (0) if the first argument (a \t{USE} flag
+    name) is included in \t{IUSE_EFFECTIVE}, false otherwise. Only available in EAPIs listed in
+    table~\ref{tab:use-list-functions} as supporting \t{in_iuse}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPI behaviour for use queries not in \t{IUSE_EFFECTIVE}}
+    \label{tab:use-list-strictness}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Behaviour}} \\
+      \midrule
+      0, 1, 2, 3        & Undefined \\
+      4, 5, 6, 7        & Error     \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting empty third argument in \t{use_with} and \t{use_enable}}
+    \label{tab:use-with-third-arg}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports empty third argument?}} \\
+      \midrule
+      0, 1, 2, 3        & No  \\
+      4, 5, 6, 7        & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{usex} and \t{in_iuse}}
+    \label{tab:use-list-functions}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{usex}?}} &
+      \multicolumn{1}{c}{\textbf{\t{in_iuse}?}} \\
+      \midrule
+      0, 1, 2, 3, 4     & No  & No  \\
+      5                 & Yes & No  \\
+      6, 7              & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Text list functions}
+These functions check whitespace-separated lists for a particular value.
+
+\begin{description}
+\item[has] Returns shell true (0) if the first argument (a word) is found in the list of subsequent
+    arguments, false otherwise. Guaranteed quiet.
+\item[hasv] The same as \t{has}, but also prints the first argument if found.
+\item[hasq] Deprecated synonym for \t{has}.
+\end{description}
+
+\subsection{Version manipulation and comparison commands}
+\featurelabel{ver-commands}
+These commands provide utilities for working with version strings. Their availability per EAPI is
+listed in table~\ref{tab:version-commands}.
+
+For the purpose of version manipulation commands, the specification provides a method for splitting
+an arbitrary version string (not necessarily conforming to section~\ref{sec:version-spec}) into
+a series of version components and version separators.
+
+A version component consists either purely of digits (\t{[0-9]+}) or purely of uppercase and
+lowercase ASCII letters (\t{[A-Za-z]+}). A version separator is either a string of any other
+characters (\t{[\textasciicircum A-Za-z0-9]}) or it occurs at the transition between a sequence
+of digits and a sequence of letters, or vice versa. In the latter case, the version separator is
+an empty string.
+
+The version string is processed left-to-right, with the successive version components being assigned
+successive indices starting with 1. The separator following a version component is assigned
+the index of the preceding version component. If the first version component is preceded by
+a non-empty string of version separator characters, this separator is assigned the index 0.
+
+The version components are presumed present if not empty. The version separators between version
+components are always presumed present, even if they are empty. The version separators preceding
+the first version component and following the last are only presumed present if they are not empty.
+
+Whenever the commands support ranges, the range is specified as an unsigned integer, optionally
+followed by a hyphen (\t{-}), which in turn is optionally followed by another unsigned integer.
+
+A single integer specifies a single component or separator index. An integer followed by a hyphen
+specifies all components or separators starting with the one at the specified index. Two integers
+separated by a hyphen specify a range of versions starting at the index specified by the first
+and ending at the second, inclusively.
+
+\begin{description}
+\item[ver_cut] Takes a range as the first argument, and optionally a version string as the second.
+    Prints a substring of the version string starting at the version component specified as start
+    of the range and ending at the version component specified as end of the range. If the version
+    string is not specified, \t{\$\{PVR\}} is used.
+
+    If the range spans outside the present version components, the missing components and separators
+    are presumed empty. In particular, the range starting at zero includes the zeroth version
+    separator if present, and the range spanning past the last version component includes the suffix
+    following it if present. A range that does not intersect with any present version components
+    yields an empty string.
+
+\item[ver_rs] Takes one or more pairs of arguments, optionally followed by a version string.
+    Every argument pair specifies a range and a replacement string. Prints a version string after
+    performing the specified separator substitutions. If the version string is not specified,
+    \t{\$\{PVR\}} is used.
+
+    For every argument pair specified, each of the version separators present at indices specified
+    by the range is replaced with the replacement string, in order. If the range spans outside
+    the range of present version separators, it is silently truncated.
+
+\item[ver_test] Takes two or three arguments. In the 3-argument form, takes an LHS version string,
+    followed by an operator, followed by an RHS version string. In the 2-argument form, the first
+    version string is omitted and \t{\$\{PVR\}} is used as LHS version string. The operator can be
+    \t{-eq} (equal to), \t{-ne} (not equal to), \t{-gt} (greater than), \t{-ge} (greater than or
+    equal to), \t{-lt} (less than) or \t{-le} (less than or equal to). Returns shell true (0) if
+    the specified relation between the LHS and RHS version strings is fulfilled.
+
+    Both version strings must conform to the version specification in
+    section~\ref{sec:version-spec}. Comparison is done using algorithm~\ref{alg:version-comparison}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting version manipulation commands}
+    \label{tab:version-commands}
+    \begin{tabular}{llll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{ver_cut}?}} &
+      \multicolumn{1}{c}{\textbf{\t{ver_rs}?}} &
+      \multicolumn{1}{c}{\textbf{\t{ver_test}?}} \\
+      \midrule
+      0, 1, 2, 3, 4, 5, 6 & No  & No  & No  \\
+      7                   & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Misc commands}
+The following commands are always available in the ebuild environment, but don't really fit in any
+of the above categories. Ebuilds must not run any of these commands once the current phase function
+has returned.
+
+\begin{description}
+\item[dosed] Takes any number of arguments, which can be files or \t{sed} expressions. For each
+    argument, if it names, relative to \t{ED} (offset-prefix aware EAPIs) or \t{D} (offset-prefix agnostic
+    EAPIs) a file which exists, then \t{sed} is run with the current expression on that file. Otherwise,
+    the current expression is set to the text of the argument. The initial value of the expression is
+    \t{s:\$\{ED\}::g} in offset-prefix aware EAPIs and \t{s:\$\{D\}::g} in offset-prefix agnostic
+    EAPIs. In EAPIs listed in table~\ref{tab:banned-commands-table}, this command is banned as per
+    section~\ref{sec:banned-commands}.
+
+\item[unpack] Unpacks one or more source archives, in order, into the current directory.
+    For compressed files, creates the target file in the current directory, with the compression
+    suffix removed from its name. After unpacking, must ensure that all filesystem objects inside
+    the current working directory (but not the current working directory itself) have permissions
+    \t{a+r,u+w,go-w} and that all directories under the current working directory additionally have
+    permissions \t{a+x}.
+
+    Arguments to \t{unpack} are interpreted as follows:
+    \begin{compactitem}
+    \item A filename without path (i.\,e., not containing any slash) is looked up in \t{DISTDIR}.
+    \item An argument starting with the string \t{./} is a path relative to the working directory.
+    \item \featurelabel{unpack-absolute} Otherwise, for EAPIs listed in
+        table~\ref{tab:unpack-behaviour} as supporting absolute and relative paths, the argument is
+        interpreted as a literal path (absolute, or relative to the working directory); for EAPIs
+        listed as \e{not} supporting such paths, \t{unpack} shall abort the build process.
+    \end{compactitem}
+
+    Any unrecognised file format shall be skipped silently. If unpacking a supported file format
+    fails, \t{unpack} shall abort the build process.
+
+    \featurelabel{unpack-extensions} Must be able to unpack the following file formats, if the
+    relevant binaries are available:
+    \begin{itemize}
+    \item tar files (\t{*.tar}). Ebuilds must ensure that GNU tar is installed.
+    \item gzip-compressed files (\t{*.gz, *.Z}). Ebuilds must ensure that GNU gzip is installed.
+    \item gzip-compressed tar files (\t{*.tar.gz, *.tgz, *.tar.Z}). Ebuilds must ensure that
+    GNU gzip and GNU tar are installed.
+    \item bzip2-compressed files (\t{*.bz2, *.bz}). Ebuilds must ensure that bzip2 is installed.
+    \item bzip2-compressed tar files (\t{*.tar.bz2, *.tbz2, *.tar.bz, *.tbz}). Ebuilds must ensure
+    that bzip2 and GNU tar are installed.
+    \item zip files (\t{*.zip, *.ZIP, *.jar}). Ebuilds must ensure that Info-ZIP Unzip is installed.
+    \item 7zip files (\t{*.7z, *.7Z}). Ebuilds must ensure that P7ZIP is installed.
+    \item rar files (\t{*.rar, *.RAR}). Ebuilds must ensure that RARLAB's unrar is installed.
+    \item LHA archives (\t{*.LHA, *.LHa, *.lha, *.lzh}). Ebuilds must ensure that the lha program is
+    installed.
+    \item ar archives (\t{*.a}). Ebuilds must ensure that GNU binutils is installed.
+    \item deb packages (\t{*.deb}). Ebuilds must ensure that the deb2targz program is installed on
+    those platforms where the GNU binutils ar program is not available and the installed ar program is
+    incompatible with GNU archives. Otherwise, ebuilds must ensure that GNU binutils is installed.
+    \item lzma-compressed files (\t{*.lzma}). Ebuilds must ensure that XZ Utils is installed.
+    \item lzma-compressed tar files (\t{*.tar.lzma}). Ebuilds must ensure that XZ Utils and GNU tar
+        are installed.
+    \item xz-compressed files (\t{*.xz}). Ebuilds must ensure that XZ Utils is installed. Only for
+        EAPIs listed in table~\ref{tab:unpack-extensions-table} as supporting \t{.xz}.
+    \item xz-compressed tar files (\t{*.tar.xz, *.txz}). Ebuilds must ensure that XZ Utils and
+        GNU tar are installed. Only for EAPIs listed in table~\ref{tab:unpack-extensions-table} as
+        supporting \t{.tar.xz} or \t{.txz}.
+    \end{itemize}
+    It is up to the ebuild to ensure that the relevant external utilities are available, whether by
+    being in the system set or via dependencies.
+
+    \featurelabel{unpack-ignore-case} \t{unpack} matches filename extensions in a case-insensitive
+    manner, for EAPIs listed such in table~\ref{tab:unpack-behaviour}.
+
+    \ChangeWhenAddingAnEAPI{7}
+    \begin{centertable}{\t{unpack} behaviour for EAPIs}
+        \label{tab:unpack-behaviour}
+        \begin{tabular}{lll}
+          \toprule
+          \multicolumn{1}{c}{\textbf{EAPI}} &
+          \multicolumn{1}{c}{\textbf{Supports absolute and relative paths?}} &
+          \multicolumn{1}{c}{\textbf{Case-insensitive matching?}} \\
+          \midrule
+          0, 1, 2, 3, 4, 5  & No  & No  \\
+          6, 7              & Yes & Yes \\
+          \bottomrule
+        \end{tabular}
+    \end{centertable}
+
+    \ChangeWhenAddingAnEAPI{7}
+    \begin{centertable}{\t{unpack} extensions for EAPIs}
+        \label{tab:unpack-extensions-table}
+        \begin{tabular}{llll}
+          \toprule
+          \multicolumn{1}{c}{\textbf{EAPI}} &
+          \multicolumn{1}{c}{\textbf{\t{.xz}?}} &
+          \multicolumn{1}{c}{\textbf{\t{.tar.xz}?}} &
+          \multicolumn{1}{c}{\textbf{\t{.txz}?}} \\
+          \midrule
+          0, 1, 2           & No  & No  & No  \\
+          3, 4, 5           & Yes & Yes & No  \\
+          6, 7              & Yes & Yes & Yes \\
+          \bottomrule
+        \end{tabular}
+    \end{centertable}
+
+\item[inherit] See section~\ref{sec:inherit}.
+
+\item[default]
+    \featurelabel{default-func} Calls the \t{default_} function for the current phase (see
+    section~\ref{sec:default-phase-funcs}). Must not be called if the \t{default_} function does
+    not exist for the current phase in the current EAPI\@. Only available in EAPIs listed in
+    table~\ref{tab:misc-commands} as supporting \t{default}.
+
+\item[einstalldocs] \featurelabel{einstalldocs} Takes no arguments. Installs the files specified
+    by the \t{DOCS} and \t{HTML_DOCS} variables or a default set of files, according to
+    algorithm~\ref{alg:einstalldocs}. If called using \t{nonfatal} and any of the called commands
+    returns a non-zero exit status, returns immediately with the same exit status. Only available
+    in EAPIs listed in table~\ref{tab:misc-commands} as supporting \t{einstalldocs}.
+
+\begin{algorithm}
+\caption{\t{einstalldocs} logic} \label{alg:einstalldocs}
+\begin{algorithmic}[1]
+\STATE save the value of the install directory for \t{dodoc}
+\STATE set the install directory for \t{dodoc} to \t{/usr/share/doc/\$\{PF\}}
+\IF{the DOCS variable is a non-empty array}
+    \STATE call \t{dodoc -r "\$\{DOCS[@]\}"}
+\ELSIF{the DOCS variable is a non-empty scalar}
+    \STATE call \t{dodoc -r \$\{DOCS\}}
+\ELSIF{the DOCS variable is unset}
+    \FORALL{$d$ matching the filename expansion of \t{README*} \t{ChangeLog} \t{AUTHORS} \t{NEWS}
+            \t{TODO} \t{CHANGES} \t{THANKS} \t{BUGS} \t{FAQ} \t{CREDITS} \t{CHANGELOG}}
+        \IF{file $d$ exists and has a size greater than zero}
+            \STATE call \t{dodoc} with $d$ as argument
+        \ENDIF
+    \ENDFOR
+\ENDIF
+\STATE set the install directory for \t{dodoc} to \t{/usr/share/doc/\$\{PF\}/html}
+\IF{the HTML_DOCS variable is a non-empty array}
+    \STATE call \t{dodoc -r "\$\{HTML_DOCS[@]\}"}
+\ELSIF{the HTML_DOCS variable is a non-empty scalar}
+    \STATE call \t{dodoc -r \$\{HTML_DOCS\}}
+\ENDIF
+\STATE restore the value of the install directory for \t{dodoc}
+\RETURN shell true (0)
+\end{algorithmic}
+\end{algorithm}
+
+\item[get_libdir] \featurelabel{get-libdir} Prints the libdir name obtained according to
+    algorithm~\ref{alg:get-libdir}. Only available in EAPIs listed in table~\ref{tab:misc-commands}
+    as supporting \t{get_libdir}.
+
+\begin{algorithm}
+\caption{\t{get_libdir} logic} \label{alg:get-libdir}
+\begin{algorithmic}[1]
+\STATE let libdir=lib
+\IF{the ABI environment variable is set}
+    \STATE let libvar=LIBDIR_\$ABI
+    \IF{the environment variable named by libvar is set}
+        \STATE let libdir=the value of the variable named by libvar
+    \ENDIF
+\ENDIF
+\STATE print the value of libdir
+\end{algorithmic}
+\end{algorithm}
+
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{Misc commands for EAPIs}
+    \label{tab:misc-commands}
+    \begin{tabular}{llll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{default}?}} &
+      \multicolumn{1}{c}{\textbf{\t{einstalldocs}?}} &
+      \multicolumn{1}{c}{\textbf{\t{get_libdir}?}} \\
+      \midrule
+      0, 1              & No  & No  & No  \\
+      2, 3, 4, 5        & Yes & No  & No  \\
+      6, 7              & Yes & Yes & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{Debug commands}
+The following commands are available for debugging. Normally all of these commands should be no ops;
+a package manager may provide a special debug mode where these commands instead do something.
+Ebuilds must not run any of these commands once the current phase function has returned.
+
+\begin{description}
+\item[debug-print] If in a special debug mode, the arguments should be outputted or recorded using
+    some kind of debug logging.
+\item[debug-print-function] Calls \t{debug-print} with \t{\$1: entering function} as the first
+    argument and the remaining arguments as additional arguments.
+\item[debug-print-section] Calls \t{debug-print} with \t{now in section \$*}.
+\end{description}
+
+\subsection{Reserved commands and variables}
+
+Except where documented otherwise, all functions and variables that contain any of the following
+strings (ignoring case) are reserved for package manager use and may not be used or relied upon by
+ebuilds:
+
+\begin{compactitem}
+\item \t{__} (two underscores) at beginning of string
+\item \t{abort}
+\item \t{dyn}
+\item \t{ebuild}
+\item \t{hook}
+\item \t{paludis}
+\item \t{portage}
+\item \t{prep}
+\end{compactitem}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

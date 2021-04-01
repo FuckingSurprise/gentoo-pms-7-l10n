@@ -1,0 +1,248 @@
+\chapter{Ebuild-defined Variables}
+\label{sec:ebuild-vars}
+
+\note{This section describes variables that may or must be defined by ebuilds. For variables that
+are passed from the package manager to the ebuild, see section~\ref{sec:ebuild-env-vars}.}
+
+If any of these variables are set to invalid values, or if any of the mandatory variables are
+undefined, the package manager's behaviour is undefined; ideally, an error in one ebuild should not
+prevent operations upon other ebuilds or packages.
+
+\section{Metadata Invariance}
+\label{sec:metadata-invariance}
+
+All ebuild-defined variables discussed in this chapter must be defined independently of
+any system, profile or tree dependent data, and must not vary depending upon the ebuild
+phase. In particular, ebuild metadata can and will be generated on a different system from that upon
+which the ebuild will be used, and the ebuild must generate identical metadata every time it
+is used.
+
+Globally defined ebuild variables without a special meaning must similarly not rely upon
+variable data.
+
+\section{Mandatory Ebuild-defined Variables}
+\label{sec:mandatory-vars}
+
+All ebuilds must define at least the following variables:
+
+\begin{description}
+\item[DESCRIPTION] A short human-readable description of the package's purpose. May be defined by an
+    eclass. Must not be empty.
+\item[SLOT] The package's slot. Must be a valid slot name, as per section~\ref{sec:slot-names}.
+    May be defined by an eclass. Must not be empty.
+
+    In EAPIs shown in table~\ref{tab:slot-deps-table} as supporting sub-slots, the \t{SLOT} variable
+    may contain an optional sub-slot part that follows the regular slot and is delimited by a \t{/}
+    character. The sub-slot must be a valid slot name, as per section~\ref{sec:slot-names}.
+    The sub-slot is used to represent cases in which an upgrade to a new version of a package with
+    a different sub-slot may require dependent packages to be rebuilt. When the sub-slot part is
+    omitted from the \t{SLOT} definition, the package is considered to have an implicit sub-slot
+    which is equal to the regular slot.
+\end{description}
+
+\section{Optional Ebuild-defined Variables}
+
+Ebuilds may define any of the following variables:
+
+\begin{description}
+\item[EAPI] The EAPI\@. See below.
+\item[HOMEPAGE] The URI or URIs for a package's homepage, including protocols.
+    See section~\ref{sec:dependencies} for full syntax.
+\item[SRC_URI] A list of source URIs for the package. Valid protocols are \t{http://},
+    \t{https://}, \t{ftp://} and \t{mirror://} (see section~\ref{sec:thirdpartymirrors} for mirror
+    behaviour). Fetch restricted packages may include URL parts consisting of just a filename.
+    See section~\ref{sec:dependencies} for full syntax.
+\item[LICENSE] The package's license. Each text token must be a valid license name, as per
+    section~\ref{sec:license-names}, and must correspond to a tree ``licenses/'' entry
+    (see section~\ref{sec:licenses-dir}). See section~\ref{sec:dependencies} for full syntax.
+    \label{ebuild-var-LICENSE}
+\item[KEYWORDS] A whitespace separated list of keywords for the ebuild. Each token must be a valid
+    keyword name, as per section~\ref{sec:keyword-names}. See section~\ref{sec:keywords} for full
+    syntax.
+\item[IUSE] The \t{USE} flags used by the ebuild. Any eclass that works with \t{USE} flags must
+    also set \t{IUSE}, listing only the variables used by that eclass. The package manager is
+    responsible for merging these values. See section~\ref{sec:use-iuse-handling} for discussion on
+    which values must be listed in this variable.
+
+    \featurelabel{iuse-defaults} In EAPIs shown in table~\ref{tab:iuse-defaults-table} as supporting
+    \t{IUSE} defaults, any use flag name in \t{IUSE} may be prefixed by at most one of a plus or a
+    minus sign. If such a prefix is present, the package manager may use it as a suggestion as to
+    the default value of the use flag if no other configuration overrides it.
+\item[REQUIRED_USE] \featurelabel{required-use} Zero or more assertions that must be met by the
+    configuration of \t{USE} flags to be valid for this ebuild. See section~\ref{sec:required-use}
+    for description and section~\ref{sec:dependencies} for full syntax. Only in EAPIs listed in
+    table~\ref{tab:optional-vars-table} as supporting \t{REQUIRED_USE}.
+\item[PROPERTIES] \featurelabel{properties} Zero or more properties for this package.
+    See section~\ref{sec:properties} for value meanings and section~\ref{sec:dependencies} for full
+    syntax. For EAPIs listed in table~\ref{tab:optional-vars-table} as having optional support,
+    ebuilds must not rely upon the package manager recognising or understanding this variable in
+    any way.
+\item[RESTRICT] Zero or more behaviour restrictions for this package. See section~\ref{sec:restrict}
+    for value meanings and section~\ref{sec:dependencies} for full syntax.
+\item[DEPEND] See section~\ref{sec:dependencies}.
+\item[RDEPEND] See section~\ref{sec:dependencies}. For some EAPIs, \t{RDEPEND} has special behaviour
+    for its value if unset and when used with an eclass. See section~\ref{sec:rdepend-depend} for
+    details.
+\item[PDEPEND] See section~\ref{sec:dependencies}.
+\item[BDEPEND] See section~\ref{sec:dependencies}.
+\end{description}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{IUSE} defaults}
+    \label{tab:iuse-defaults-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{IUSE} defaults?}} \\
+      \midrule
+      0                         & No  \\
+      1, 2, 3, 4, 5, 6, 7       & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting various ebuild-defined variables}
+    \label{tab:optional-vars-table}
+    \begin{tabular}{lll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{PROPERTIES}?}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{REQUIRED_USE}?}} \\
+      \midrule
+      0, 1, 2, 3        & Optionally & No  \\
+      4, 5, 6, 7        & Yes        & Yes \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\subsection{EAPI}
+\label{sec:eapi}
+
+An empty or unset \t{EAPI} value is equivalent to \t{0}. Ebuilds must not assume that they will get
+a particular one of these two values if they are expecting one of these two values.
+
+The package manager must either pre-set the \t{EAPI} variable to \t{0} or ensure that it is unset
+before sourcing the ebuild for metadata generation. When using the ebuild for other purposes, the
+package manager must either pre-set \t{EAPI} to the value specified by the ebuild's metadata or
+ensure that it is unset.
+
+If any of these variables are set to invalid values, the package manager's behaviour is undefined;
+ideally, an error in one ebuild should not prevent operations upon other ebuilds or packages.
+
+If the EAPI is to be specified in an ebuild, the \t{EAPI} variable must be assigned to precisely
+once. The assignment must not be preceded by any lines other than blank lines or those that start
+with optional whitespace (spaces or tabs) followed by a \t{\#} character, and the line containing
+the assignment statement must match the following regular expression:
+\begin{verbatim}
+^[ \t]*EAPI=(['"]?)([A-Za-z0-9+_.-]*)\1[ \t]*([ \t]#.*)?$
+\end{verbatim}
+
+The package manager must determine the EAPI of an ebuild by parsing its first non-blank and
+non-comment line, using the above regular expression. If it matches, the EAPI is the substring
+matched by the capturing parentheses (\t{0} if empty), otherwise it is \t{0}. For a recognised
+EAPI, the package manager must make sure that the \t{EAPI} value obtained by sourcing the ebuild
+with bash is identical to the EAPI obtained by parsing. The ebuild must be treated as invalid if
+these values are different.
+
+\subsection{Keywords}
+\label{sec:keywords}
+
+Keywords are used to indicate levels of stability of a package on a respective architecture
+\t{arch}. The following conventions are used:
+\begin{compactitem}
+\item \t{arch}: Both the package version and the ebuild are widely tested, known to work and not
+    have any serious issues on the indicated platform. This is referred to as a \i{stable keyword}.
+\item \t{\textasciitilde arch}: The package version and the ebuild are believed to work and do
+    not have any known serious bugs, but more testing is required before the package version is
+    considered suitable for obtaining a stable keyword. This is referred to as an \i{unstable
+    keyword} or a \i{testing keyword}.
+\item No keyword: It is not known whether the package will work, or insufficient testing has
+    occurred.
+\item \t{-arch}: The package version will not work on the architecture.
+\end{compactitem}
+The \t{-*} keyword is used to indicate package versions which are not worth trying to test on
+unlisted architectures.
+
+An empty \t{KEYWORDS} variable indicates uncertain functionality on any architecture.
+
+\subsection{RDEPEND value}
+\label{sec:rdepend-depend}
+
+\featurelabel{rdepend-depend} In EAPIs listed in table~\ref{tab:rdepend-depend-table} as having
+\t{RDEPEND=DEPEND}, if \t{RDEPEND} is unset (but not if it is set to an empty string) in an ebuild,
+when generating metadata the package manager must treat its value as being equal to the value of
+\t{DEPEND}.
+
+When dealing with eclasses, only values set in the ebuild itself are considered for this behaviour;
+any \t{DEPEND} or \t{RDEPEND} set in an eclass does not change the implicit \t{RDEPEND=DEPEND} for
+the ebuild portion, and any \t{DEPEND} value set in an eclass does not get treated as being part of
+\t{RDEPEND}.
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs with \t{RDEPEND=DEPEND} default}
+    \label{tab:rdepend-depend-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{\t{RDEPEND=DEPEND}?}} \\
+      \midrule
+      0, 1, 2, 3        & Yes \\
+      4, 5, 6, 7        & No  \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+\section{Magic Ebuild-defined Variables}
+
+The following variables must be defined by \t{inherit} (see section~\ref{sec:inherit}), and may be
+considered to be part of the ebuild's metadata:
+
+\begin{description}
+\item[ECLASS] The current eclass, or unset if there is no current eclass. This is handled magically
+    by \t{inherit} and must not be modified manually.
+\item[INHERITED] List of inherited eclass names. Again, this is handled magically by \t{inherit}.
+\end{description}
+
+\note{Thus, by extension of section~\ref{sec:metadata-invariance}, \t{inherit} may not be used
+conditionally, except upon constant conditions.}
+
+The following are special variables defined by the package manager for internal use and may or may
+not be exported to the ebuild environment:
+
+\begin{description}
+\item[DEFINED_PHASES] \featurelabel{defined-phases} A space separated arbitrarily ordered list of
+phase names (e.\,g.\ \t{configure setup unpack}) whose phase functions are defined by the ebuild or
+an eclass inherited by the ebuild. If no phase functions are defined, a single hyphen is used
+instead of an empty string. For EAPIs listed in table~\ref{tab:defined-phases-table} as having
+optional \t{DEFINED_PHASES} support, package managers may not rely upon the metadata cache having
+this variable defined, and must treat an empty string as ``this information is not available''.
+\end{description}
+
+\note{Thus, by extension of section~\ref{sec:metadata-invariance}, phase functions must not be
+defined based upon any variant condition.}
+
+\ChangeWhenAddingAnEAPI{7}
+\begin{centertable}{EAPIs supporting \t{DEFINED_PHASES}}
+    \label{tab:defined-phases-table}
+    \begin{tabular}{ll}
+      \toprule
+      \multicolumn{1}{c}{\textbf{EAPI}} &
+      \multicolumn{1}{c}{\textbf{Supports \t{DEFINED_PHASES}?}} \\
+      \midrule
+      0, 1, 2, 3        & Optionally \\
+      4, 5, 6, 7        & Yes        \\
+      \bottomrule
+    \end{tabular}
+\end{centertable}
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:

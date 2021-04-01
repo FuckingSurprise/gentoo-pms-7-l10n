@@ -1,0 +1,83 @@
+\chapter{Eclasses}
+\label{sec:eclasses}
+
+Eclasses serve to store common code that is used by more than one ebuild, which greatly aids
+maintainability and reduces the tree size. However, due to metadata cache issues, care must be taken
+in their use. In format they are similar to an ebuild, and indeed are sourced as part of any ebuild
+using them. The interpreter is therefore the same, and the same requirements for being parseable
+hold.
+
+Eclasses must be located in the \t{eclass} directory in the top level of the repository---see
+section~\ref{sec:eclass-dir}. Each eclass is a single file named \t{<name>.eclass}, where \t{<name>} is
+the name of this eclass, used by \t{inherit} and \t{EXPORT_FUNCTIONS} among other places.
+
+\section{The inherit Command}
+\label{sec:inherit}
+
+An ebuild wishing to make use of an eclass does so by using the \t{inherit} command in global scope.
+This will cause the eclass to be sourced as part of the ebuild---any function or variable
+definitions in the eclass will appear as part of the ebuild, with exceptions for certain metadata
+variables, as described below.
+
+The \t{inherit} command takes one or more parameters, which must be the names of eclasses (excluding
+the \t{.eclass} suffix and the path). For each parameter, in order, the named eclass is sourced.
+
+Eclasses may end up being sourced multiple times.
+
+The \t{inherit} command must also ensure that:
+
+\begin{compactitem}
+\item The \t{ECLASS} variable is set to the name of the current eclass, when sourcing that eclass.
+\item Once all inheriting has been done, the \t{INHERITED} metadata variable contains the name of
+    every eclass used, separated  by whitespace.
+\end{compactitem}
+
+\section{Eclass-defined Metadata Keys}
+
+The \t{IUSE}, \t{REQUIRED_USE}, \t{DEPEND}, \t{BDEPEND}, \t{RDEPEND} and \t{PDEPEND} variables
+are handled specially when set by an eclass. They must be accumulated across eclasses, appending
+the value set by each eclass to the resulting value after the previous one is loaded. Then the
+eclass-defined value is appended to that defined by the ebuild. In the case of \t{RDEPEND}, this
+is done after the implicit \t{RDEPEND} rules in section~\ref{sec:rdepend-depend} are applied.
+
+\section{EXPORT_FUNCTIONS}
+
+There is one command available in the eclass environment that is neither available nor meaningful
+in ebuilds---\t{EXPORT_FUNCTIONS}\@. This can be used to alias ebuild phase functions from the
+eclass so that an ebuild inherits a default definition whilst retaining the ability to override and
+call the eclass-defined version from it. The use of it is best illustrated by an example; this is
+given in listing~\ref{lst:export-functions} and is a snippet from a hypothetical \t{foo.eclass}.
+
+\begin{listing}
+\caption{\t{EXPORT_FUNCTIONS} example: \t{foo.eclass}} \label{lst:export-functions}
+\begin{verbatim}
+foo_src_compile()
+{
+    econf --enable-gerbil \
+            $(use_enable fnord)
+    emake gerbil || die "Couldn't make a gerbil"
+    emake || die "emake failed"
+}
+
+EXPORT_FUNCTIONS src_compile
+\end{verbatim}
+\end{listing}
+
+This example defines an eclass \t{src_compile} function and uses \t{EXPORT_FUNCTIONS} to alias
+it. Then any ebuild that inherits \t{foo.eclass} will have a default \t{src_compile} defined, but
+should the author wish to override it he can access the function in \t{foo.eclass} by calling
+\t{foo_src_compile}.
+
+\t{EXPORT_FUNCTIONS} must only be used on ebuild phase functions. The function that is aliased
+must be named \t{eclassname_phasefunctionname}, where \t{eclassname} is the name of the eclass.
+
+% vim: set filetype=tex fileencoding=utf8 et tw=100 spell spelllang=en :
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "pms"
+%%% LaTeX-indent-level: 4
+%%% LaTeX-item-indent: 0
+%%% TeX-brace-indent-level: 4
+%%% fill-column: 100
+%%% End:
