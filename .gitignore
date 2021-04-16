@@ -3,9 +3,9 @@
 *.aux
 *.bbl
 *.blg
-*.css
+# *.css
 *.dvi
-*.html
+# *.html
 *.idv
 *.lg
 *.loa
