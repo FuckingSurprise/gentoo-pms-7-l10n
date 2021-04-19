@@ -69,7 +69,7 @@ href="#x1-50001" id="QQ2-1-5">简介</a></span>
 <br />&#x00A0;<span class="sectionToc" >1.1 <a 
 href="#x1-60001.1" id="QQ2-1-6">目的与动机</a></span>
 <br />&#x00A0;<span class="sectionToc" >1.2 <a 
-href="#x1-70001.2" id="QQ2-1-7">Rationale</a></span>
+href="#x1-70001.2" id="QQ2-1-7">逻辑依据</a></span>
 <br />&#x00A0;<span class="sectionToc" >1.3 <a 
 href="#x1-80001.3" id="QQ2-1-8">报告问题</a></span>
 <br />&#x00A0;<span class="sectionToc" >1.4 <a 
@@ -645,62 +645,47 @@ href="#x1-170002">Features in EAPIs</a></span><br />
 <h2 class="chapterHead"><span class="titlemark">第一章</span><br /><a 
  id="x1-50001"></a>Introduction</h2>
 <h3 class="sectionHead"><span class="titlemark">1.1   </span> <a 
- id="x1-60001.1"></a>Aims and Motivation</h3>
+ id="x1-60001.1"></a>目的与动机</h3>
 <!--l. 5--><p class="noindent" >
 本文档旨在全面描述 ebuild 仓库和其中的 ebuild 的格式，以及支持此类仓库所需要的软件包管理器行为的某些方面。
-</p><!--l. 8--><p class="noindent" >This document is <span 
-class="ecti-1000">not </span>designed to be an introduction to ebuild development. Prior knowledge of
-ebuild creation and an understanding of how the package management system works is assumed;
-certain less familiar terms are explained in the Glossary in chapter&#x00A0;<a 
-href="#x1-15400015">15<!--tex4ht:ref: sec:glossary --></a>.
-</p><!--l. 12--><p class="noindent" >This document does not specify any user or package manager configuration information.
+</p><!--l. 8--><p class="noindent" >本文档<span 
+class="ecti-1000">并非</span>旨在介绍 ebuild 开发。阅读前需要具备创建 ebuild 的预备知识并理解软件包管理系统是如何工作的；
+第<a href="#x1-15400015">15<!--tex4ht:ref: sec:glossary --></a>章的术语表中解释了某些不太常见的术语。
+</p><!--l. 12--><p class="noindent" >本文档不会具体说明任何用户的或软件包管理器的配置信息。
 </p><!--l. 14--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">1.2   </span> <a 
- id="x1-70001.2"></a>Rationale</h3>
-<!--l. 16--><p class="noindent" >At present the only definition of what an ebuild can assume about its environment,
-and the only definition of what is valid in an ebuild, is the source code of the latest
-Portage release and a general consensus about which features are too new to assume
-availability. This has several drawbacks: not only is it impossible to change any aspect of
-Portage behaviour without verifying that nothing in the tree relies upon it, but if a new
-package manager should appear it becomes impossible to fully support such an ill-defined
-standard.
-</p><!--l. 23--><p class="noindent" >This document aims to address both of these concerns by defining almost all aspects of what an
-ebuild repository looks like, and how an ebuild is allowed to behave. Thus, both Portage and other
-package managers can change aspects of their behaviour not defined here without worry of
-incompatibilities with any particular repository.
+ id="x1-70001.2"></a>逻辑依据</h3>
+<!--l. 16--><p class="noindent" >目前，ebuild 工作环境和 ebuild 有效内容的唯一定义，皆来自于最新发布的 Portage 源码，以及关于哪些功能因太新而无法保证可用性的普遍共识。
+这么做有两个缺点：不仅在要更改 Portage 的行为时无法验证仓库目录结构中有没有依赖它的东西，而且如果出现新的软件包管理器，也不太可能完全支持这么一个含糊不清的标准。
+</p><!--l. 23--><p class="noindent" >本文档旨在通过定义 ebuild 仓库的目录结构和 ebuild 的行为方式来解决这两个问题。
+这样一来，不管是 Portage 还是其他的软件包管理器都可以更改它们行为中本文没有定义的地方，并且无需担心和特定的仓库不兼容。
 </p><!--l. 28--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">1.3   </span> <a 
- id="x1-80001.3"></a>Reporting Issues</h3>
-<!--l. 30--><p class="noindent" >Issues (inaccuracies, wording problems, omissions etc.)&#x00A0;in this document should be reported via
-Gentoo Bugzilla using product <span 
-class="ecti-1000">Gentoo Hosted Projects</span>, component <span 
-class="ecti-1000">PMS/EAPI </span>and the default
-assignee. There should be one bug per issue, and one issue per bug.
-</p><!--l. 34--><p class="noindent" >Patches (in <span 
-class="ectt-1000">git format-patch </span>form if possible) may be submitted either via Bugzilla or to the
-<a 
-href="mailto:gentoo-pms@lists.gentoo.org" ><span 
-class="ectt-1000">gentoo-pms@lists.gentoo.org</span></a> mailing list. Patches will be reviewed by the PMS team, who will
-do one of the following:
+ id="x1-80001.3"></a>报告问题</h3>
+<!--l. 30--><p class="noindent" >文档中出现的问题（表述不清，措辞问题，内容遗漏等）可以通过 Gentoo Bugzilla 使用产品
+<span class="ecti-1000">Gentoo Hosted Projects</span>，<span class="ecti-1000">PMS/EAPI</span> 组件和默认处理人进行报告。
+每个问题只提一个 bug，每个 bug 只对应一个问题。
+</p><!--l. 34--><p class="noindent" >补丁（尽可能以 <span 
+class="ectt-1000">git format-patch</span> 的形式）可以通过 Bugzilla 或
+<a href="mailto:gentoo-pms@lists.gentoo.org" ><span class="ectt-1000">gentoo-pms@lists.gentoo.org</span></a>
+邮件列表提交，由 PMS 团队审核，他们会采取以下四种方式之一进行处理：
 </p><!--l. 39--><p class="noindent" >
      </p><ul>
-     <li class="compactitem">Accept and apply the patch.
+     <li class="compactitem">接受并应用补丁。
      </li>
-     <li class="compactitem">Explain why the patch cannot be applied as-is. The patch may then be updated and
-     resubmitted if appropriate.
+     <li class="compactitem">解释为什么补丁不能按原样应用。然后可以更新补丁，如果合适的话重新提交。
      </li>
-     <li class="compactitem">Reject the patch outright.
+     <li class="compactitem">彻底拒绝补丁。
      </li>
-     <li class="compactitem">Take special action merited by the individual circumstances.</li></ul>
+     <li class="compactitem">根据具体情况采取特殊措施。</li></ul>
                                                                             
                                                                             
-<!--l. 46--><p class="noindent" >When reporting issues, remember that this document is not the appropriate place for pushing
-through changes to the tree or the package manager, except where those changes are
-bugs.
-</p><!--l. 49--><p class="noindent" >If any issue cannot be resolved by the PMS team, it may be escalated to the Gentoo
-Council.
+<!--l. 46--><p class="noindent" >
+当报告问题时请记住，本文档不是推动目录结构或软件包管理器更改的合适地方，除非改的确实是 bug。
+</p><!--l. 49--><p class="noindent" >
+如果 PMS 团队无法解决问题，那么可能会将它上报给 Gentoo 委员会。
 </p><!--l. 51--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">1.4   </span> <a 
