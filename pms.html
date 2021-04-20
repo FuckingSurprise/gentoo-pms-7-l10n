@@ -720,28 +720,24 @@ class="ecti-1000">软件包管理器</span>在文档中通篇都是指广义上�
  id="x1-110002"></a>EAPIs</h2>
 <h3 class="sectionHead"><span class="titlemark">2.1   </span> <a 
  id="x1-120002.1"></a>Definition</h3>
-<!--l. 5--><p class="noindent" >An EAPI can be thought of as a &#8216;version&#8217; of this specification to which a package conforms. An
-EAPI value is a string as per section&#x00A0;<a 
-href="#x1-240003.1.8">3.1.8<!--tex4ht:ref: sec:eapi-names --></a>, and is part of an ebuild&#8217;s metadata.
-</p><!--l. 8--><p class="noindent" >If a package manager encounters a package version with an unrecognised EAPI, it must not
-attempt to perform any operations upon it. It could, for example, ignore the package version
-entirely (although this can lead to user confusion), or it could mark the package version as masked.
-A package manager must not use any metadata generated from a package with an unrecognised
-EAPI.
-</p><!--l. 13--><p class="noindent" >The package manager must not attempt to perform any kind of comparison test other than
-equality upon EAPIs.
+<!--l. 5--><p class="noindent" >EAPI 可以理解为软件包所遵循的这套规范的‘版本’。EAPI 的值是一个
+<a href="#x1-240003.1.8">3.1.8<!--tex4ht:ref: sec:eapi-names --></a> 节所规定的字符串，并且是 ebuild 元数据的一部分。
+</p><!--l. 8--><p class="noindent" >如果软件包管理器遇到了一个带有无法识别的 EAPI 的软件包版本，则不应尝试对它进行任何操作。
+比如，可以完全忽略该软件包版本（尽管这可能会让用户感到疑惑），或者将该软件包版本标记为已屏蔽。
+软件包管理器不应使用任何从带有无法识别的 EAPI 的软件包生成的元数据。
+</p><!--l. 13--><p class="noindent" >软件包管理器不应对 EAPI 执行除相等之外的任何比较操作。
 </p><!--l. 16--><p class="noindent" >EAPIs are also used for profile directories, as described in section&#x00A0;<a 
 href="#x1-450005.2.2">5.2.2<!--tex4ht:ref: sec:profile-eapi --></a>.
 </p><!--l. 18--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">2.2   </span> <a 
  id="x1-130002.2"></a>Defined EAPIs</h3>
-<!--l. 20--><p class="noindent" >The following EAPIs are defined by this specification:
+<!--l. 20--><p class="noindent" >下列 EAPI 由此规范定义：
 </p><!--l. 23--><p class="noindent" >
      </p><dl class="compactdesc"><dt class="compactdesc">
 <span 
 class="ecbx-1000">0</span> </dt><dd 
-class="compactdesc">The &#8216;original&#8217; base EAPI.
+class="compactdesc">‘原始的’基本 EAPI。
      </dd><dt class="compactdesc">
 <span 
 class="ecbx-1000">1</span> </dt><dd 
