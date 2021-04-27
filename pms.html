@@ -868,7 +868,7 @@ class="ectt-1000">A-Za-z0-9+_.-</span>] 中的任何字符，不能以连字符�
 </p><!--l. 57--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">3.2   </span> <a 
- id="x1-250003.2"></a>Version Specifications</h3>
+ id="x1-250003.2"></a>版本规范</h3>
 <!--l. 59--><p class="noindent" >软件包管理器不得给版本组成部分的数量和任何一个部分的长度施加固定限制。
 软件包管理器应该根据下面的规则说明或拒绝无效的版本。
 </p><!--l. 63--><p class="noindent" >版本由格式为
@@ -876,29 +876,21 @@ class="ectt-1000">A-Za-z0-9+_.-</span>] 中的任何字符，不能以连字符�
 的数字部分开头。
 </p><!--l. 66--><p class="noindent" >数字部分后面可以选择性地跟一个 <span 
 class="ectt-1000">[a-z]</span>（一个小写字母）。
-                                                                            
-                                                                            
-</p><!--l. 68--><p class="noindent" >This may be followed by zero or more of the suffixes <span 
-class="ectt-1000">_alpha</span>, <span 
-class="ectt-1000">_beta</span>, <span 
-class="ectt-1000">_pre</span>, <span 
-class="ectt-1000">_rc </span>or <span 
-class="ectt-1000">_p</span>, each of which
-may optionally be followed by an unsigned integer. Suffix and integer count as separate version
-components.
-</p><!--l. 72--><p class="noindent" >This may optionally be followed by the suffix <span 
-class="ectt-1000">-r </span>followed immediately by an unsigned integer (the
-&#8220;revision number&#8221;). If this suffix is not present, it is assumed to be <span 
-class="ectt-1000">-r0</span>.
+</p><!--l. 68--><p class="noindent" >接下来可以跟零个或多个后缀 <span 
+class="ectt-1000">_alpha</span>，<span 
+class="ectt-1000">_beta</span>，<span 
+class="ectt-1000">_pre</span>，<span 
+class="ectt-1000">_rc </span> 或 <span 
+class="ectt-1000">_p</span>，这些后缀每一个后面都可以选择性地跟一个无符号整数，后缀和整数算作两个单独的版本组成部分。
+</p><!--l. 72--><p class="noindent" >最后可以选择性地跟一个后缀 <span 
+class="ectt-1000">-r</span> 再紧接着跟一个无符号整数（即“修订号”）。如果此后缀没有写，则视为 <span 
+class="ectt-1000">-r0</span>。
 </p><!--l. 75--><p class="noindent" >
 </p>
 <h3 class="sectionHead"><span class="titlemark">3.3   </span> <a 
  id="x1-260003.3"></a>Version Comparison</h3>
-<!--l. 77--><p class="noindent" >Version specifications are compared component by component, moving from left to right, as
-detailed in algorithm&#x00A0;<a 
-href="#x1-26001r1">3.1<!--tex4ht:ref: alg:version-comparison --></a> and sub-algorithms. If a sub-algorithm returns a decision, then that is
-the result of the whole comparison; if it terminates without returning a decision, the process
-continues from the point from which it was invoked.
+<!--l. 77--><p class="noindent" >版本的比较是按照算法 <a href="#x1-26001r1">3.1<!--tex4ht:ref: alg:version-comparison --></a>
+及其子算法，从左到右逐个组成部分进行的。如果子算法能比出高低，则它就是整个版本比较的结果；如果子算法不能比出高低，那么比较过程就从调用它的地方继续进行。
 </p>
 <div class="algorithm">
                                                                             
@@ -909,29 +901,29 @@ continues from the point from which it was invoked.
                                                                             
                                                                             
  <div class="caption" 
-><span class="id">Algorithm 3.1: </span><span  
-class="content">Version comparison top-level logic</span></div><!--tex4ht:label?: x1-26001r1 -->
+><span class="id">算法 3.1：</span><span 
+class="content">版本比较顶层逻辑</span></div><!--tex4ht:label?: x1-26001r1 -->
 <div class="algorithmic">
 <a 
  id="x1-26002r1"></a>
- <span class="ALCitem">1:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> let <span 
-class="cmmi-10">A </span>and <span 
-class="cmmi-10">B </span>be the versions to be compared <a 
+ <span class="ALCitem">1:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> 令 <span 
+class="cmmi-10">A</span> 和 <span 
+class="cmmi-10">B</span> 等于要比较的两个版本<a 
  id="x1-26003r2"></a>
- <br /><span class="ALCitem">2:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> compare numeric components using algorithm&#x00A0;<a 
-href="#x1-26008r2">3.2<!--tex4ht:ref: alg:version-comparison-numeric --></a> <a 
+ <br /><span class="ALCitem">2:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> 调用算法 <a 
+href="#x1-26008r2">3.2<!--tex4ht:ref: alg:version-comparison-numeric --></a> 比较它们的数字部分<a 
  id="x1-26004r3"></a>
- <br /><span class="ALCitem">3:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> compare letter components using algorithm&#x00A0;<a 
-href="#x1-26041r4">3.4<!--tex4ht:ref: alg:version-comparison-letter --></a> <a 
+ <br /><span class="ALCitem">3:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> 调用算法 <a 
+href="#x1-26041r4">3.4<!--tex4ht:ref: alg:version-comparison-letter --></a> 比较它们的字母部分<a 
  id="x1-26005r4"></a>
- <br /><span class="ALCitem">4:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> compare suffixes using algorithm&#x00A0;<a 
-href="#x1-26049r5">3.5<!--tex4ht:ref: alg:version-comparison-suffix --></a> <a 
+ <br /><span class="ALCitem">4:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> 调用算法 <a 
+href="#x1-26049r5">3.5<!--tex4ht:ref: alg:version-comparison-suffix --></a> 比较它们的后缀部分<a 
  id="x1-26006r5"></a>
- <br /><span class="ALCitem">5:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> compare revision components using algorithm&#x00A0;<a 
-href="#x1-26083r7">3.7<!--tex4ht:ref: alg:version-comparison-revision --></a> <a 
+ <br /><span class="ALCitem">5:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> 调用算法 <a 
+href="#x1-26083r7">3.7<!--tex4ht:ref: alg:version-comparison-revision --></a> 比较它们的修订部分<a 
  id="x1-26007r6"></a>
  <br /><span class="ALCitem">6:</span><span class="ALIndent" style="width:4.99878pt;">&nbsp;</span> <span 
-class="ecbx-1000">return </span>&#x00A0;<span 
+class="ecbx-1000">返回 </span>&#x00A0;<span 
 class="cmmi-10">A </span><span 
 class="cmr-10">= </span><span 
 class="cmmi-10">B</span>
@@ -949,8 +941,8 @@ class="cmmi-10">B</span>
                                                                             
                                                                             
  <div class="caption" 
-><span class="id">Algorithm 3.2: </span><span  
-class="content">Version comparison logic for numeric components</span></div><!--tex4ht:label?: x1-26008r2 -->
+><span class="id">算法 3.2：</span><span 
+class="content">数字部分的版本比较逻辑</span></div><!--tex4ht:label?: x1-26008r2 -->
 <div class="algorithmic">
 <a 
  id="x1-26009r7"></a>
